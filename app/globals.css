@@ -1,26 +1,254 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-surface: #f4faff;
+  --color-surface-dim: #cfdce4;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #e9f6fd;
+  --color-surface-container: #e3f0f8;
+  --color-surface-container-high: #ddeaf2;
+  --color-surface-container-highest: #d7e4ec;
+  --color-on-surface: #111d23;
+  --color-on-surface-variant: #414844;
+  --color-inverse-surface: #263238;
+  --color-inverse-on-surface: #e6f3fb;
+  --color-foreground: #1b2424;
+  --color-outline: #727974;
+  --color-outline-variant: #c1c8c2;
+  --color-surface-tint: #446555;
+  --color-primary: #153c3b;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #496b5a;
+  --color-on-primary-container: #c4ead5;
+  --color-inverse-primary: #aacfba;
+  --color-secondary: #8b6f47;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #c6e8d2;
+  --color-on-secondary-container: #4b6958;
+  --color-accent: #c6a15b;
+  --color-accent-foreground: #1d1810;
+  --color-tertiary: #085650;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #2c6e68;
+  --color-on-tertiary-container: #aceee6;
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+  --color-background: #f4faff;
+  --color-on-background: #111d23;
+  --color-surface-variant: #d7e4ec;
+  --color-warm-white: #fffcf7;
+  --color-cream: #faf7f0;
+  --color-soft-beige: #f3ede3;
+  --color-sage: #8faf9b;
+  --color-deep-sage: #496b5a;
+  --color-soft-teal: #6fafa8;
+  --color-charcoal: #263238;
+  --color-muted-gold: #c8a96a;
+  --color-light-border: #e8e1d6;
+  --color-problem-accent: #e07a5f;
+  --font-sans: var(--font-plus-jakarta), "Inter", system-ui, sans-serif;
+  --spacing-section: 96px;
+  --spacing-section-sm: 64px;
+  --spacing-container: 32px;
+  --radius-button: 10px;
+  --radius-card: 16px;
+  --radius-panel: 24px;
+  --shadow-low: 0px 4px 20px rgba(73, 107, 90, 0.04);
+  --shadow-high: 0px 12px 32px rgba(38, 50, 56, 0.08);
+  --shadow-luxury: 0 24px 70px rgba(21, 60, 59, 0.13);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root {
+  --surface: #f4faff;
+  --surface-dim: #cfdce4;
+  --surface-bright: #f4faff;
+  --foreground: #1b2424;
+  --surface-container-lowest: #ffffff;
+  --surface-container-low: #e9f6fd;
+  --surface-container: #e3f0f8;
+  --surface-container-high: #ddeaf2;
+  --surface-container-highest: #d7e4ec;
+  --on-surface: #111d23;
+  --on-surface-variant: #414844;
+  --inverse-surface: #263238;
+  --inverse-on-surface: #e6f3fb;
+  --outline: #727974;
+  --outline-variant: #c1c8c2;
+  --surface-tint: #446555;
+  --primary: #153c3b;
+  --on-primary: #ffffff;
+  --primary-container: #496b5a;
+  --on-primary-container: #c4ead5;
+  --inverse-primary: #aacfba;
+  --secondary: #8b6f47;
+  --on-secondary: #ffffff;
+  --accent: #c6a15b;
+  --accent-foreground: #1d1810;
+  --secondary-container: #c6e8d2;
+  --on-secondary-container: #4b6958;
+  --tertiary: #085650;
+  --on-tertiary: #ffffff;
+  --tertiary-container: #2c6e68;
+  --on-tertiary-container: #aceee6;
+  --error: #ba1a1a;
+  --on-error: #ffffff;
+  --error-container: #ffdad6;
+  --on-error-container: #93000a;
+  --background: #f4faff;
+  --on-background: #111d23;
+  --surface-variant: #d7e4ec;
+  --warm-white: #fffcf7;
+  --cream: #faf7f0;
+  --soft-beige: #f3ede3;
+  --sage: #8faf9b;
+  --deep-sage: #496b5a;
+  --soft-teal: #6fafa8;
+  --charcoal: #263238;
+  --muted-gold: #c8a96a;
+  --light-border: #e8e1d6;
+  --radius-button: 10px;
+  --radius-card: 16px;
+  --radius-panel: 24px;
+  --shadow-luxury: 0 24px 70px rgba(21, 60, 59, 0.13);
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
+  background: var(--warm-white);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.container-nexora {
+  width: 100%;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+@media (min-width: 768px) {
+  .container-nexora {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container-nexora {
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+}
+
+.headline-xl {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 36px;
+}
+
+.display-xl {
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 52px;
+}
+
+@media (min-width: 768px) {
+  .display-xl {
+    font-size: 64px;
+    line-height: 72px;
+  }
+}
+
+@media (min-width: 768px) {
+  .headline-xl {
+    font-size: 40px;
+    line-height: 48px;
+  }
+}
+
+.headline-lg {
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 40px;
+}
+
+.headline-md {
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 32px;
+}
+
+.body-lg {
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 28px;
+}
+
+.body-md {
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+}
+
+.body-sm {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+}
+
+.shadow-low {
+  box-shadow: var(--shadow-low);
+}
+
+.shadow-high {
+  box-shadow: var(--shadow-high);
+}
+
+.shadow-luxury {
+  box-shadow: var(--shadow-luxury);
+}
+
+.section-space {
+  padding-top: var(--spacing-section-sm);
+  padding-bottom: var(--spacing-section-sm);
+}
+
+@media (min-width: 1024px) {
+  .section-space {
+    padding-top: var(--spacing-section);
+    padding-bottom: var(--spacing-section);
+  }
+}
+
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-high);
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.3s ease-out;
 }
