@@ -3,12 +3,7 @@
 import { useMemo, useState } from "react";
 import { Search, SlidersHorizontal, Star, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import {
-  agentLocations,
-  agentSpecialties,
-  templateAgents,
-  type Agent,
-} from "@/lib/real-estate-template";
+import { type Agent } from "@/lib/real-estate-template";
 import { AgentDirectoryCard } from "./AgentDirectoryCard";
 
 type SortOption = "rating" | "sold" | "experience";
@@ -25,7 +20,11 @@ const defaultFilters: AgentFilters = {
   specialty: "All",
 };
 
-export function AgentDirectoryBrowser() {
+interface AgentDirectoryBrowserProps {
+  agents: Agent[];
+}
+
+export function AgentDirectoryBrowser({ agents }: AgentDirectoryBrowserProps) {
   const [filters, setFilters] = useState<AgentFilters>(defaultFilters);
   const [sort, setSort] = useState<SortOption>("rating");
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -39,8 +38,23 @@ export function AgentDirectoryBrowser() {
     setSort("rating");
   }
 
+  // Derive unique locations and specialties from live data
+  const agentLocations = useMemo(
+    () => ["All", ...Array.from(new Set(agents.map((a) => a.location).filter(Boolean)))],
+    [agents]
+  );
+  const agentSpecialties = useMemo(
+    () => [
+      "All",
+      ...Array.from(
+        new Set(agents.flatMap((a) => a.specialties).filter(Boolean))
+      ),
+    ],
+    [agents]
+  );
+
   const filteredAgents = useMemo(() => {
-    return templateAgents
+    return agents
       .filter((agent) => {
         const query = filters.search.trim().toLowerCase();
         const matchesSearch =
@@ -115,7 +129,7 @@ export function AgentDirectoryBrowser() {
         </div>
 
         <div className="mt-4 hidden grid-cols-2 gap-3 lg:grid">
-          <DirectoryFilters filters={filters} onChange={updateFilter} />
+          <DirectoryFilters filters={filters} onChange={updateFilter} locations={agentLocations} specialties={agentSpecialties} />
         </div>
       </div>
 
@@ -181,7 +195,7 @@ export function AgentDirectoryBrowser() {
               </button>
             </div>
             <div className="space-y-4">
-              <DirectoryFilters filters={filters} onChange={updateFilter} />
+              <DirectoryFilters filters={filters} onChange={updateFilter} locations={agentLocations} specialties={agentSpecialties} />
             </div>
             <div className="mt-6 grid grid-cols-2 gap-3">
               <Button type="button" variant="outline" onClick={resetFilters}>
@@ -201,22 +215,26 @@ export function AgentDirectoryBrowser() {
 function DirectoryFilters({
   filters,
   onChange,
+  locations,
+  specialties,
 }: {
   filters: AgentFilters;
   onChange: (key: keyof AgentFilters, value: string) => void;
+  locations: string[];
+  specialties: string[];
 }) {
   return (
     <>
       <SelectFilter
         label="Location"
         value={filters.location}
-        options={agentLocations}
+        options={locations}
         onChange={(value) => onChange("location", value)}
       />
       <SelectFilter
         label="Specialty"
         value={filters.specialty}
-        options={agentSpecialties}
+        options={specialties}
         onChange={(value) => onChange("specialty", value)}
       />
     </>

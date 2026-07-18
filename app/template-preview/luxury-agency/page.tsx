@@ -32,6 +32,7 @@ import {
   templateTestimonials,
   whyChoosePoints,
 } from "@/lib/real-estate-template";
+import { fetchPublicAgents } from "@/lib/public-agents-api";
 
 export const metadata = {
   title: "Aurelia Estates Preview",
@@ -47,6 +48,15 @@ export default async function LuxuryAgencyTemplatePage() {
     console.error("Failed to fetch properties:", error);
   }
 
+  let homeAgents = templateAgents;
+  try {
+    const liveAgents = await fetchPublicAgents();
+    console.log('liveAgents isss', liveAgents)
+    if (liveAgents.length > 0) homeAgents = liveAgents;
+  } catch (error) {
+    console.error("Failed to fetch agents, falling back to mock data:", error);
+  }
+console.log('Home agents iss', homeAgents)
   return (
     <div className="min-h-screen bg-warm-white text-on-surface">
       <RealEstateNavbar />
@@ -234,7 +244,7 @@ export default async function LuxuryAgencyTemplatePage() {
             subtitle="Real people, direct accountability, and clear ownership from inquiry to closing."
           />
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {templateAgents.map((agent) => (
+            {homeAgents.slice(0, 3).map((agent) => (
               <AgentCard key={agent.id} agent={agent} />
             ))}
           </div>

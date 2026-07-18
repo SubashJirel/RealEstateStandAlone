@@ -3,6 +3,7 @@ import { AgentDirectoryBrowser } from "@/components/real-estate/agents/AgentDire
 import { RealEstateFooter } from "@/components/real-estate/homepage/RealEstateFooter";
 import { RealEstateNavbar } from "@/components/real-estate/homepage/RealEstateNavbar";
 import { Badge } from "@/components/ui/Badge";
+import { fetchPublicAgents } from "@/lib/public-agents-api";
 import { templateAgents } from "@/lib/real-estate-template";
 
 export const metadata = {
@@ -11,25 +12,38 @@ export const metadata = {
     "Search the Aurelia Estates agent directory and open detailed advisor profiles with listings and reviews.",
 };
 
-const directoryHighlights = [
-  {
-    label: "Senior Advisors",
-    value: templateAgents.length.toString(),
-    icon: UsersRound,
-  },
-  {
-    label: "Average Rating",
-    value: "4.8",
-    icon: Star,
-  },
-  {
-    label: "Properties Sold",
-    value: `${templateAgents.reduce((sum, agent) => sum + agent.dealsClosed, 0)}+`,
-    icon: Award,
-  },
-];
+export default async function LuxuryAgencyAgentsPage() {
+  let agents = templateAgents;
+  try {
+    const liveAgents = await fetchPublicAgents();
+    if (liveAgents.length > 0) agents = liveAgents;
+  } catch (error) {
+    console.error("Failed to fetch agents, falling back to mock data:", error);
+  }
 
-export default function LuxuryAgencyAgentsPage() {
+  const directoryHighlights = [
+    {
+      label: "Senior Advisors",
+      value: agents.length.toString(),
+      icon: UsersRound,
+    },
+    {
+      label: "Average Rating",
+      value:
+        agents.some((a) => a.rating > 0)
+          ? (
+              agents.reduce((sum, a) => sum + a.rating, 0) /
+              agents.filter((a) => a.rating > 0).length
+            ).toFixed(1)
+          : "N/A",
+      icon: Star,
+    },
+    {
+      label: "Properties Sold",
+      value: `${agents.reduce((sum, agent) => sum + agent.dealsClosed, 0)}+`,
+      icon: Award,
+    },
+  ];
   return (
     <div className="min-h-screen bg-warm-white text-on-surface">
       <RealEstateNavbar />
@@ -89,7 +103,7 @@ export default function LuxuryAgencyAgentsPage() {
 
       <section className="py-10 md:py-14">
         <div className="container-nexora">
-          <AgentDirectoryBrowser />
+          <AgentDirectoryBrowser agents={agents} />
         </div>
       </section>
 
