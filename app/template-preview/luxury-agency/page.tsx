@@ -18,16 +18,16 @@ import { PropertySearchForm } from "@/components/real-estate/homepage/PropertySe
 import { RealEstateFooter } from "@/components/real-estate/homepage/RealEstateFooter";
 import { RealEstateNavbar } from "@/components/real-estate/homepage/RealEstateNavbar";
 import { NewsletterSubscription } from "@/components/real-estate/leads/LeadForms";
-import { PropertyCard } from "@/components/real-estate/PropertyCard";
+import { LiveHomePropertyCard } from "@/components/real-estate/LiveHomePropertyCard";
 import { StatsCard } from "@/components/real-estate/StatsCard";
 import { TestimonialCard } from "@/components/real-estate/TestimonialCard";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { SectionHeader } from "@/components/ui/SectionHeader";
+import { fetchPublicProperties, type LiveListingProperty } from "@/lib/public-properties-api";
 import {
   propertyCategories,
   templateAgents,
-  templateProperties,
   templateStats,
   templateTestimonials,
   whyChoosePoints,
@@ -39,7 +39,14 @@ export const metadata = {
     "Premium real estate agency homepage template preview with luxury listings, agents, testimonials, and lead capture.",
 };
 
-export default function LuxuryAgencyTemplatePage() {
+export default async function LuxuryAgencyTemplatePage() {
+  let liveProperties: LiveListingProperty[] = [];
+  try {
+    liveProperties = await fetchPublicProperties();
+  } catch (error) {
+    console.error("Failed to fetch properties:", error);
+  }
+
   return (
     <div className="min-h-screen bg-warm-white text-on-surface">
       <RealEstateNavbar />
@@ -112,8 +119,8 @@ export default function LuxuryAgencyTemplatePage() {
             subtitle="A refined selection of premium residences and investment-ready properties."
           />
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {templateProperties.map((property) => (
-              <PropertyCard key={property.id} property={property} />
+            {liveProperties.slice(0, 3).map((property) => (
+              <LiveHomePropertyCard key={property.id} property={property} />
             ))}
           </div>
           <div className="mt-8 text-center">

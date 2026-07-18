@@ -1,6 +1,15 @@
 import { notFound } from "next/navigation";
 import { RealEstateFooter } from "@/components/real-estate/homepage/RealEstateFooter";
 import { RealEstateNavbar } from "@/components/real-estate/homepage/RealEstateNavbar";
+
+// Live API imports
+import {
+  fetchPublicPropertyById,
+  fetchPublicProperties,
+} from "@/lib/public-properties-api";
+import { LivePropertyDetailView } from "@/components/real-estate/detail/LivePropertyDetailView";
+
+// Mock data imports (keep working for existing slug-based routes)
 import { PropertyAgentInfo } from "@/components/real-estate/detail/PropertyAgentInfo";
 import { PropertyAmenities } from "@/components/real-estate/detail/PropertyAmenities";
 import { PropertyDescription } from "@/components/real-estate/detail/PropertyDescription";
@@ -24,33 +33,85 @@ interface PropertyDetailPageProps {
   params: Promise<{ slug: string }>;
 }
 
+// ---------------------------------------------------------------------------
+// Static params — include both mock slugs AND live numeric IDs
+// ---------------------------------------------------------------------------
+
 export async function generateStaticParams() {
-  return getAllPropertySlugs().map((slug) => ({ slug }));
+  // Mock data slugs
+  const mockSlugs = getAllPropertySlugs().map((slug) => ({ slug }));
+
+  // Live API IDs — best-effort; fall back to empty on error
+  let liveIds: { slug: string }[] = [];
+  try {
+    const properties = await fetchPublicProperties();
+    liveIds = properties.map((p) => ({ slug: String(p.id) }));
+  } catch {
+    // API unavailable at build time — pages will be rendered on demand
+  }
+
+  return [...mockSlugs, ...liveIds];
 }
+
+// ---------------------------------------------------------------------------
+// Metadata
+// ---------------------------------------------------------------------------
 
 export async function generateMetadata({ params }: PropertyDetailPageProps) {
   const { slug } = await params;
-  const property = getPropertyDetailBySlug(slug);
 
-  if (!property) {
-    return { title: "Property Not Found | Aurelia Estates" };
+  // Numeric → live API property
+  if (/^\d+$/.test(slug)) {
+    try {
+      const property = await fetchPublicPropertyById(slug);
+      return {
+        title: `${property.title} | Aurelia Estates`,
+        description: property.summary,
+      };
+    } catch {
+      return { title: "Property Not Found | Aurelia Estates" };
+    }
   }
 
+  // String slug → mock data property
+  const property = getPropertyDetailBySlug(slug);
+  if (!property) return { title: "Property Not Found | Aurelia Estates" };
   return {
     title: `${property.title} | Aurelia Estates Preview`,
     description: property.summary,
   };
 }
 
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
+
 export default async function PropertyDetailPage({
   params,
 }: PropertyDetailPageProps) {
   const { slug } = await params;
-  const property = getPropertyDetailBySlug(slug);
 
-  if (!property) {
-    notFound();
+  // ── Live API path (numeric ID) ────────────────────────────────────────────
+  if (/^\d+$/.test(slug)) {
+    let property;
+    try {
+      property = await fetchPublicPropertyById(slug);
+    } catch {
+      notFound();
+    }
+
+    return (
+      <div className="min-h-screen bg-warm-white text-on-surface">
+        <RealEstateNavbar />
+        <LivePropertyDetailView property={property} />
+        <RealEstateFooter />
+      </div>
+    );
   }
+
+  // ── Mock data path (text slug) ────────────────────────────────────────────
+  const property = getPropertyDetailBySlug(slug);
+  if (!property) notFound();
 
   const agent = getAgentForProperty(property);
   const similarProperties = getSimilarProperties(property);
@@ -84,10 +145,7 @@ export default async function PropertyDetailPage({
 
             <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
               <PropertyPriceSection property={property} />
-              <PropertyAgentInfo
-                agent={agent}
-                propertyTitle={property.title}
-              />
+              <PropertyAgentInfo agent={agent} propertyTitle={property.title} />
               <PropertyInquiryForm property={property} />
             </aside>
           </div>
