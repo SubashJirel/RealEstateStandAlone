@@ -1,16 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Filter, Search, SlidersHorizontal, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Filter, Loader2, Search, SlidersHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import {
-  listingLocations,
-  listingProperties,
-  listingPropertyTypes,
-  type ListingProperty,
-} from "@/lib/real-estate-template";
 import { cn } from "@/lib/utils";
-import { ListingPropertyCard } from "./ListingPropertyCard";
+import {
+  fetchPublicProperties,
+  type LiveListingProperty,
+} from "@/lib/public-properties-api";
+import { LiveListingPropertyCard } from "./LiveListingPropertyCard";
 
 type SortOption = "featured" | "newest" | "price-low" | "price-high";
 
@@ -34,16 +32,40 @@ const defaultFilters: Filters = {
 
 const priceRanges = [
   { label: "Any", min: 0, max: Number.POSITIVE_INFINITY },
-  { label: "Under NPR 2 Cr", min: 0, max: 20000000 },
-  { label: "NPR 2 Cr - 5 Cr", min: 20000000, max: 50000000 },
-  { label: "NPR 5 Cr - 8 Cr", min: 50000000, max: 80000000 },
-  { label: "NPR 8 Cr+", min: 80000000, max: Number.POSITIVE_INFINITY },
+  { label: "Under NPR 2 Cr", min: 0, max: 20_000_000 },
+  { label: "NPR 2 Cr - 5 Cr", min: 20_000_000, max: 50_000_000 },
+  { label: "NPR 5 Cr - 8 Cr", min: 50_000_000, max: 80_000_000 },
+  { label: "NPR 8 Cr+", min: 80_000_000, max: Number.POSITIVE_INFINITY },
 ];
 
 const countOptions = ["Any", "1+", "2+", "3+", "4+", "5+"] as const;
 const propertiesPerPage = 6;
 
 export function PropertyListingsBrowser() {
+  // ── Data state ──────────────────────────────────────────────────────────
+  const [properties, setProperties] = useState<LiveListingProperty[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchPublicProperties()
+      .then((data) => setProperties(data))
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setLoading(false));
+  }, []);
+
+  // ── Dynamic filter options derived from loaded data ──────────────────────
+  const locationOptions = useMemo(() => {
+    const cities = Array.from(new Set(properties.map((p) => p.city))).sort();
+    return ["All", ...cities];
+  }, [properties]);
+
+  const typeOptions = useMemo(() => {
+    const types = Array.from(new Set(properties.map((p) => p.type))).sort();
+    return ["All", ...types];
+  }, [properties]);
+
+  // ── UI state ────────────────────────────────────────────────────────────
   const [filters, setFilters] = useState<Filters>(defaultFilters);
   const [sort, setSort] = useState<SortOption>("featured");
   const [page, setPage] = useState(1);
@@ -66,7 +88,7 @@ export function PropertyListingsBrowser() {
       priceRanges.find((range) => range.label === filters.priceRange) ??
       priceRanges[0];
 
-    return listingProperties
+    return properties
       .filter((property) => {
         const query = filters.search.trim().toLowerCase();
         const matchesSearch =
@@ -78,15 +100,14 @@ export function PropertyListingsBrowser() {
         const matchesLocation =
           filters.location === "All" || property.city === filters.location;
         const matchesPrice =
-          property.priceValue >= activePrice.min &&
-          property.priceValue <= activePrice.max;
+          property.priceRaw >= activePrice.min &&
+          property.priceRaw <= activePrice.max;
         const matchesType =
           filters.propertyType === "All" ||
           property.type === filters.propertyType;
         const minBedrooms = parseFilterCount(filters.bedrooms);
         const minBathrooms = parseFilterCount(filters.bathrooms);
-        const matchesBeds =
-          minBedrooms === 0 || property.beds >= minBedrooms;
+        const matchesBeds = minBedrooms === 0 || property.beds >= minBedrooms;
         const matchesBaths =
           minBathrooms === 0 || property.baths >= minBathrooms;
 
@@ -100,7 +121,7 @@ export function PropertyListingsBrowser() {
         );
       })
       .sort((a, b) => sortProperties(a, b, sort));
-  }, [filters, sort]);
+  }, [filters, sort, properties]);
 
   const totalPages = Math.max(
     1,
@@ -124,6 +145,43 @@ export function PropertyListingsBrowser() {
     });
   }
 
+  // ── Loading state ────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 text-on-surface-variant">
+        <Loader2 className="size-10 animate-spin text-primary" />
+        <p className="text-sm font-medium">Loading properties…</p>
+      </div>
+    );
+  }
+
+  // ── Error state ──────────────────────────────────────────────────────────
+  if (error) {
+    return (
+      <div className="rounded-[var(--radius-panel)] border border-light-border bg-surface-container-lowest p-10 text-center shadow-low">
+        <h3 className="text-xl font-semibold text-on-surface">
+          Unable to load properties
+        </h3>
+        <p className="mt-2 text-sm text-on-surface-variant">{error}</p>
+        <Button
+          type="button"
+          className="mt-5"
+          onClick={() => {
+            setLoading(true);
+            setError(null);
+            fetchPublicProperties()
+              .then(setProperties)
+              .catch((err: Error) => setError(err.message))
+              .finally(() => setLoading(false));
+          }}
+        >
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div>
       <div className="rounded-[var(--radius-panel)] border border-light-border bg-surface-container-lowest p-4 shadow-low md:p-5">
@@ -187,7 +245,12 @@ export function PropertyListingsBrowser() {
                 Reset
               </button>
             </div>
-            <FilterFields filters={filters} onChange={updateFilter} />
+            <FilterFields
+              filters={filters}
+              onChange={updateFilter}
+              locationOptions={locationOptions}
+              typeOptions={typeOptions}
+            />
           </div>
         </aside>
 
@@ -209,10 +272,10 @@ export function PropertyListingsBrowser() {
           {visibleProperties.length > 0 ? (
             <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
               {visibleProperties.map((property) => (
-                <ListingPropertyCard
+                <LiveListingPropertyCard
                   key={property.id}
                   property={property}
-                  favorite={favorites.has(property.id)}
+                  favorite={favorites.has(String(property.id))}
                   onToggleFavorite={toggleFavorite}
                 />
               ))}
@@ -262,7 +325,12 @@ export function PropertyListingsBrowser() {
                 <X className="size-5" aria-hidden="true" />
               </button>
             </div>
-            <FilterFields filters={filters} onChange={updateFilter} />
+            <FilterFields
+              filters={filters}
+              onChange={updateFilter}
+              locationOptions={locationOptions}
+              typeOptions={typeOptions}
+            />
             <div className="mt-6 grid grid-cols-2 gap-3">
               <Button type="button" variant="outline" onClick={resetFilters}>
                 Reset
@@ -281,16 +349,20 @@ export function PropertyListingsBrowser() {
 function FilterFields({
   filters,
   onChange,
+  locationOptions,
+  typeOptions,
 }: {
   filters: Filters;
   onChange: (key: keyof Filters, value: string) => void;
+  locationOptions: string[];
+  typeOptions: string[];
 }) {
   return (
     <div className="space-y-5">
       <SelectFilter
         label="Location"
         value={filters.location}
-        options={listingLocations}
+        options={locationOptions}
         onChange={(value) => onChange("location", value)}
       />
       <SelectFilter
@@ -302,7 +374,7 @@ function FilterFields({
       <SelectFilter
         label="Property Type"
         value={filters.propertyType}
-        options={listingPropertyTypes}
+        options={typeOptions}
         onChange={(value) => onChange("propertyType", value)}
       />
       <SelectFilter
@@ -378,21 +450,21 @@ function Pagination({
         Previous
       </Button>
       {Array.from({ length: totalPages }).map((_, index) => {
-        const page = index + 1;
+        const pg = index + 1;
         return (
           <button
-            key={page}
+            key={pg}
             type="button"
-            aria-current={page === currentPage ? "page" : undefined}
-            onClick={() => onPageChange(page)}
+            aria-current={pg === currentPage ? "page" : undefined}
+            onClick={() => onPageChange(pg)}
             className={cn(
               "flex size-9 items-center justify-center rounded-[var(--radius-button)] border text-sm font-semibold transition",
-              page === currentPage
+              pg === currentPage
                 ? "border-primary bg-primary text-on-primary"
                 : "border-light-border bg-surface-container-lowest text-on-surface-variant hover:border-primary/40"
             )}
           >
-            {page}
+            {pg}
           </button>
         );
       })}
@@ -415,18 +487,18 @@ function parseFilterCount(value: string) {
 }
 
 function sortProperties(
-  a: ListingProperty,
-  b: ListingProperty,
+  a: LiveListingProperty,
+  b: LiveListingProperty,
   sort: SortOption
 ) {
   if (sort === "newest") {
     return Date.parse(b.listedAt) - Date.parse(a.listedAt);
   }
   if (sort === "price-low") {
-    return a.priceValue - b.priceValue;
+    return a.priceRaw - b.priceRaw;
   }
   if (sort === "price-high") {
-    return b.priceValue - a.priceValue;
+    return b.priceRaw - a.priceRaw;
   }
-  return Number(b.featured ?? false) - Number(a.featured ?? false);
+  return Number(b.featured) - Number(a.featured);
 }
