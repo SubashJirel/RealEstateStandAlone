@@ -18,7 +18,7 @@ export function LiveListingPropertyCard({
   favorite,
   onToggleFavorite,
 }: LiveListingPropertyCardProps) {
-  const href = `${PROPERTY_BASE_PATH}/${property.slug}`;
+  const href = `${PROPERTY_BASE_PATH}/${property.id}`;
   const id = String(property.id);
 
   return (

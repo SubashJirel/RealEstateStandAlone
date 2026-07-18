@@ -221,7 +221,7 @@ export function mapProperty(property: any): LiveListingProperty {
 }
 
 // ---------------------------------------------------------------------------
-// API fetch
+// API fetch — list
 // ---------------------------------------------------------------------------
 
 const LICENSE_NUMBER = "NR-001";
@@ -251,4 +251,36 @@ export async function fetchPublicProperties(): Promise<LiveListingProperty[]> {
   const list: any[] = Array.isArray(data) ? data : (data.results ?? []);
 
   return list.map(mapProperty);
+}
+
+// ---------------------------------------------------------------------------
+// API fetch — single property detail
+// ---------------------------------------------------------------------------
+
+export async function fetchPublicPropertyById(
+  id: number | string
+): Promise<LiveListingProperty> {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  if (!baseUrl) {
+    throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
+  }
+
+  const url = `${baseUrl}/public/agencies/${LICENSE_NUMBER}/properties/${id}/`;
+
+  const res = await fetch(url, {
+    next: { revalidate: 60 },
+  });
+
+  if (!res.ok) {
+    throw new Error(
+      `Failed to fetch property ${id}: ${res.status} ${res.statusText}`
+    );
+  }
+
+  const data = await res.json();
+
+  // The endpoint may return a single object or a 1-element array
+  const raw = Array.isArray(data) ? data[0] : data;
+
+  return mapProperty(raw);
 }
