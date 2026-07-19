@@ -609,11 +609,14 @@ export function slugifyAgentName(name: string): string {
     .replace(/(^-|-$)/g, "");
 }
 
-export function getAgentSlug(agent: Pick<Agent, "name">): string {
+export function getAgentSlug(agent: Pick<Agent, "id" | "name">): string {
+  // Live API agents have purely numeric IDs — use the ID directly as the slug
+  // so the detail page can resolve them via the API without a name lookup.
+  if (/^\d+$/.test(agent.id)) return agent.id;
   return slugifyAgentName(agent.name);
 }
 
-export function getAgentProfilePath(agent: Pick<Agent, "name">): string {
+export function getAgentProfilePath(agent: Pick<Agent, "id" | "name">): string {
   return `/template-preview/luxury-agency/agents/${getAgentSlug(agent)}`;
 }
 

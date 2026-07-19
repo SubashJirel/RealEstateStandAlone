@@ -48,8 +48,8 @@ function splitCSV(value: string | string[] | null | undefined): string[] {
 
 export function mapApiAgentToAgent(raw: ApiAgent): Agent {
   return {
-    // Use string id for compatibility with Agent type
-    id: `agent-${raw.id}`,
+    // Use numeric id as string — used for the profile URL slug
+    id: String(raw.id),
     name: raw.full_name,
     role: raw.designation || "Property Advisor",
     location: raw.location || "Nepal",
@@ -105,4 +105,30 @@ export async function fetchPublicAgents(): Promise<Agent[]> {
   const list: ApiAgent[] = Array.isArray(data) ? data : (data.results ?? []);
 
   return list.map(mapApiAgentToAgent);
+}
+
+// ---------------------------------------------------------------------------
+// API fetch — single agent detail
+// ---------------------------------------------------------------------------
+
+export async function fetchPublicAgentById(id: number | string): Promise<Agent> {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  if (!baseUrl) {
+    throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
+  }
+
+  const url = `${baseUrl}/public/agencies/${LICENSE_NUMBER}/agents/${id}/`;
+
+  const res = await fetch(url, {
+    next: { revalidate: 60 },
+  });
+
+  if (!res.ok) {
+    throw new Error(
+      `Failed to fetch agent ${id}: ${res.status} ${res.statusText}`
+    );
+  }
+
+  const data: ApiAgent = await res.json();
+  return mapApiAgentToAgent(data);
 }

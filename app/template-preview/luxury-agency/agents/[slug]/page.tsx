@@ -22,7 +22,9 @@ import {
   getAgentSlug,
   getPropertyDetailPath,
   templateAgents,
+  type Agent,
 } from "@/lib/real-estate-template";
+import { fetchPublicAgentById } from "@/lib/public-agents-api";
 
 interface AgentProfilePageProps {
   params: Promise<{ slug: string }>;
@@ -34,7 +36,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: AgentProfilePageProps) {
   const { slug } = await params;
-  const agent = getAgentBySlug(slug);
+  const agent = await resolveAgent(slug);
 
   if (!agent) {
     return { title: "Agent Not Found | Aurelia Estates" };
@@ -46,11 +48,23 @@ export async function generateMetadata({ params }: AgentProfilePageProps) {
   };
 }
 
+/** Resolve an agent by slug — numeric slugs are live API agents, name-based slugs use mock data. */
+async function resolveAgent(slug: string): Promise<Agent | null> {
+  if (/^\d+$/.test(slug)) {
+    try {
+      return await fetchPublicAgentById(slug);
+    } catch {
+      return null;
+    }
+  }
+  return getAgentBySlug(slug) ?? null;
+}
+
 export default async function AgentProfilePage({
   params,
 }: AgentProfilePageProps) {
   const { slug } = await params;
-  const agent = getAgentBySlug(slug);
+  const agent = await resolveAgent(slug);
 
   if (!agent) {
     notFound();
@@ -101,7 +115,7 @@ export default async function AgentProfilePage({
                 <ProfileMetric
                   icon={Star}
                   label="Client Rating"
-                  value={`${agent.rating}`}
+                  value={agent.rating > 0 ? `${agent.rating}` : "N/A"}
                 />
                 <ProfileMetric
                   icon={Phone}
@@ -202,35 +216,41 @@ export default async function AgentProfilePage({
                 <h2 className="mt-2 text-2xl font-semibold text-on-surface">
                   Client Feedback
                 </h2>
-                <div className="mt-6 grid gap-4 md:grid-cols-2">
-                  {agent.reviews.map((review) => (
-                    <article
-                      key={review.id}
-                      className="rounded-[var(--radius-card)] border border-light-border bg-cream p-5"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <h3 className="font-semibold text-on-surface">
-                            {review.author}
-                          </h3>
-                          <p className="mt-1 text-sm text-on-surface-variant">
-                            {review.location}
-                          </p>
+                {agent.reviews.length > 0 ? (
+                  <div className="mt-6 grid gap-4 md:grid-cols-2">
+                    {agent.reviews.map((review) => (
+                      <article
+                        key={review.id}
+                        className="rounded-[var(--radius-card)] border border-light-border bg-cream p-5"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <h3 className="font-semibold text-on-surface">
+                              {review.author}
+                            </h3>
+                            <p className="mt-1 text-sm text-on-surface-variant">
+                              {review.location}
+                            </p>
+                          </div>
+                          <span className="flex items-center gap-1 text-sm font-semibold text-primary">
+                            <Star
+                              className="size-4 fill-accent text-accent"
+                              aria-hidden="true"
+                            />
+                            {review.rating}
+                          </span>
                         </div>
-                        <span className="flex items-center gap-1 text-sm font-semibold text-primary">
-                          <Star
-                            className="size-4 fill-accent text-accent"
-                            aria-hidden="true"
-                          />
-                          {review.rating}
-                        </span>
-                      </div>
-                      <p className="mt-4 text-sm leading-6 text-on-surface-variant">
-                        {review.comment}
-                      </p>
-                    </article>
-                  ))}
-                </div>
+                        <p className="mt-4 text-sm leading-6 text-on-surface-variant">
+                          {review.comment}
+                        </p>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-4 text-sm text-on-surface-variant">
+                    No reviews available yet.
+                  </p>
+                )}
               </section>
             </main>
 
