@@ -8,6 +8,7 @@ import {
   ScheduleViewingForm,
 } from "@/components/real-estate/leads/LeadForms";
 import { Button } from "@/components/ui/Button";
+import { fetchPublicProperties } from "@/lib/public-properties-api";
 
 export const metadata = {
   title: "Schedule Viewing | Aurelia Estates Preview",
@@ -33,7 +34,15 @@ const viewingSteps = [
   },
 ];
 
-export default function ScheduleViewingPage() {
+export default async function ScheduleViewingPage() {
+  let properties: { id: number; title: string }[] = [];
+  try {
+    const liveProperties = await fetchPublicProperties();
+    properties = liveProperties.map((p) => ({ id: p.id, title: p.title }));
+  } catch (error) {
+    console.error("Failed to fetch properties for viewing form:", error);
+  }
+
   return (
     <div className="min-h-screen bg-warm-white text-on-surface">
       <RealEstateNavbar />
@@ -46,7 +55,7 @@ export default function ScheduleViewingPage() {
 
       <section className="py-12 md:py-16">
         <div className="container-nexora grid gap-10 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px]">
-          <ScheduleViewingForm />
+          <ScheduleViewingForm properties={properties} />
           <aside className="space-y-6">
             <div className="rounded-[var(--radius-panel)] border border-light-border bg-surface-container-lowest p-6 shadow-low">
               <h2 className="text-2xl font-semibold text-on-surface">

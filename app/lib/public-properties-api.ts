@@ -254,6 +254,42 @@ export async function fetchPublicProperties(): Promise<LiveListingProperty[]> {
 }
 
 // ---------------------------------------------------------------------------
+// API — request site visit
+// ---------------------------------------------------------------------------
+
+export interface SiteVisitRequestPayload {
+  full_name: string;
+  phone: string;
+  email: string;
+  preferred_datetime: string; // ISO 8601
+  message: string;
+}
+
+export async function requestSiteVisit(
+  propertyId: number | string,
+  payload: SiteVisitRequestPayload
+): Promise<void> {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  if (!baseUrl) {
+    throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
+  }
+
+  const url = `${baseUrl}/public/agencies/${LICENSE_NUMBER}/properties/${propertyId}/request-site-visit/`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    throw new Error(
+      `Site visit request failed: ${res.status} ${res.statusText}`
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // API fetch — single property detail
 // ---------------------------------------------------------------------------
 

@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { listingProperties } from "@/lib/real-estate-template";
+import type { LiveListingProperty, SiteVisitRequestPayload } from "@/lib/public-properties-api";
+import { requestSiteVisit } from "@/lib/public-properties-api";
 import { cn } from "@/lib/utils";
 import {
   FormNotice,
@@ -46,7 +48,7 @@ interface ScheduleViewingState {
   name: string;
   email: string;
   phone: string;
-  property: string;
+  propertyId: string;   // numeric id from the API
   date: string;
   time: string;
   guests: string;
@@ -197,36 +199,40 @@ export function ContactLeadForm({ className }: { className?: string }) {
   );
 }
 
-export function ScheduleViewingForm({ className }: { className?: string }) {
+export function ScheduleViewingForm({
+  className,
+  properties = [],
+}: {
+  className?: string;
+  properties?: Pick<LiveListingProperty, "id" | "title">[];
+}) {
   const [form, setForm] = useState<ScheduleViewingState>({
     name: "",
     email: "",
     phone: "",
-    property: "Select a property",
+    propertyId: "",
     date: "",
     time: "",
     guests: "1",
     message: "",
   });
   const [errors, setErrors] = useState<Errors<ScheduleViewingState>>({});
-  const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "success" | "error" | "submitting">("idle");
 
   function update(field: keyof ScheduleViewingState, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
     setErrors((current) => ({ ...current, [field]: undefined }));
-    setStatus("idle");
+    if (status !== "submitting") setStatus("idle");
   }
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
     const nextErrors: Errors<ScheduleViewingState> = {
       name: validateRequired(form.name, "Full name"),
       email: validateEmail(form.email),
       phone: validatePhone(form.phone),
-      property:
-        form.property === "Select a property"
-          ? "Choose a property to view."
-          : undefined,
+      propertyId: !form.propertyId ? "Choose a property to view." : undefined,
       date: validateRequired(form.date, "Preferred date"),
       time: validateRequired(form.time, "Preferred time"),
     };
@@ -235,8 +241,42 @@ export function ScheduleViewingForm({ className }: { className?: string }) {
       setStatus("error");
       return;
     }
-    setStatus("success");
+
+    setStatus("submitting");
+
+    // Combine date + time into an ISO datetime string
+    const timeMap: Record<string, string> = {
+      Morning: "09:00",
+      Afternoon: "13:00",
+      Evening: "17:00",
+      Weekend: "10:00",
+    };
+    const timeStr = timeMap[form.time] ?? "09:00";
+    const preferredDatetime = new Date(`${form.date}T${timeStr}:00`).toISOString();
+
+    const payload: SiteVisitRequestPayload = {
+      full_name: form.name,
+      phone: form.phone,
+      email: form.email,
+      preferred_datetime: preferredDatetime,
+      message: form.message,
+    };
+
+    try {
+      await requestSiteVisit(form.propertyId, payload);
+      setStatus("success");
+    } catch {
+      setStatus("error");
+    }
   }
+
+  // Build select options from live properties; fall back to static list
+  const propertyOptions =
+    properties.length > 0
+      ? properties.map((p) => ({ value: String(p.id), label: p.title }))
+      : listingProperties
+          .slice(0, 8)
+          .map((p, i) => ({ value: String(i + 1), label: p.title }));
 
   return (
     <FormShell
@@ -276,15 +316,31 @@ export function ScheduleViewingForm({ className }: { className?: string }) {
           error={errors.phone}
           required
         />
-        <SelectInput
-          id="viewing-property"
-          label="Property"
-          value={form.property}
-          onChange={(value) => update("property", value)}
-          options={propertyOptions}
-          error={errors.property}
-          required
-        />
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="viewing-property" className="text-sm font-medium text-on-surface">
+            Property <span aria-hidden="true" className="text-error">*</span>
+          </label>
+          <select
+            id="viewing-property"
+            value={form.propertyId}
+            onChange={(e) => update("propertyId", e.target.value)}
+            required
+            className={cn(
+              "h-11 w-full rounded-[var(--radius-input)] border bg-surface-container-lowest px-3 text-sm text-on-surface shadow-sm transition focus:outline-none focus:ring-2 focus:ring-primary",
+              errors.propertyId ? "border-error focus:ring-error" : "border-light-border"
+            )}
+          >
+            <option value="">Select a property</option>
+            {propertyOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          {errors.propertyId && (
+            <p className="text-xs text-error">{errors.propertyId}</p>
+          )}
+        </div>
         <TextInput
           id="viewing-date"
           label="Preferred Date"
@@ -322,14 +378,29 @@ export function ScheduleViewingForm({ className }: { className?: string }) {
           helper="Optional"
         />
       </div>
-      <LeadStatus
-        status={status}
-        successTitle="Viewing request prepared"
-        successText="A production site could send this directly to the assigned agent calendar or CRM."
-      />
-      <Button type="submit" variant="accent" size="lg" className="mt-6 w-full">
+      {status === "success" && (
+        <LeadStatus
+          status="success"
+          successTitle="Viewing request submitted"
+          successText="Your site visit request has been sent. An advisor will follow up to confirm the appointment."
+        />
+      )}
+      {status === "error" && (
+        <LeadStatus
+          status="error"
+          successTitle=""
+          successText=""
+        />
+      )}
+      <Button
+        type="submit"
+        variant="accent"
+        size="lg"
+        className="mt-6 w-full"
+        disabled={status === "submitting"}
+      >
         <CalendarDays aria-hidden="true" />
-        Request Viewing
+        {status === "submitting" ? "Requesting…" : "Request Viewing"}
       </Button>
     </FormShell>
   );
