@@ -648,7 +648,8 @@ function PriceRow({ label, value }: { label: string; value: string }) {
 // Agent Info (sidebar)
 // ---------------------------------------------------------------------------
 
-import type { LiveAgentDetail } from "@/lib/public-properties-api";
+import type { LiveAgentDetail, PropertyInquiryPayload } from "@/lib/public-properties-api";
+import { inquireProperty } from "@/lib/public-properties-api";
 
 function LiveAgentInfo({
   agent,
@@ -750,11 +751,55 @@ function LiveAgentInfo({
 // ---------------------------------------------------------------------------
 
 function LiveInquiryForm({ property }: { property: LiveListingProperty }) {
-  const [submitted, setSubmitted] = useState(false);
+  const [form, setForm] = useState<PropertyInquiryPayload & { name: string }>({
+    full_name: "",
+    phone: "",
+    email: "",
+    message: "",
+    name: "",
+  });
+  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState("");
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function update(field: keyof typeof form, value: string) {
+    setForm((prev) => ({ ...prev, [field]: value }));
+    if (status !== "submitting") setStatus("idle");
+  }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setSubmitted(true);
+
+    if (!form.full_name.trim()) {
+      setErrorMsg("Full name is required.");
+      setStatus("error");
+      return;
+    }
+    if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      setErrorMsg("A valid email address is required.");
+      setStatus("error");
+      return;
+    }
+    if (!form.phone.trim()) {
+      setErrorMsg("Phone number is required.");
+      setStatus("error");
+      return;
+    }
+
+    setStatus("submitting");
+    setErrorMsg("");
+
+    try {
+      await inquireProperty(property.id, {
+        full_name: form.full_name,
+        phone: form.phone,
+        email: form.email,
+        message: form.message || `I'm interested in ${property.title}.`,
+      });
+      setStatus("success");
+    } catch {
+      setErrorMsg("Something went wrong. Please try again.");
+      setStatus("error");
+    }
   }
 
   return (
@@ -771,7 +816,7 @@ function LiveInquiryForm({ property }: { property: LiveListingProperty }) {
         </h2>
       </div>
 
-      {submitted ? (
+      {status === "success" ? (
         <div className="rounded-[var(--radius-card)] bg-accent/10 p-5 text-center">
           <p className="font-semibold text-on-surface">Enquiry Sent!</p>
           <p className="mt-2 text-sm text-on-surface-variant">
@@ -780,42 +825,76 @@ function LiveInquiryForm({ property }: { property: LiveListingProperty }) {
           </p>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input type="hidden" name="property_id" value={property.displayPropertyId} />
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
           <div>
-            <label className="mb-1.5 block text-sm font-semibold text-on-surface">
-              Full Name
+            <label htmlFor="inquiry-name" className="mb-1.5 block text-sm font-semibold text-on-surface">
+              Full Name <span className="text-error" aria-hidden="true">*</span>
             </label>
             <input
+              id="inquiry-name"
               type="text"
               required
+              value={form.full_name}
+              onChange={(e) => update("full_name", e.target.value)}
               placeholder="Your name"
               className="h-11 w-full rounded-[var(--radius-button)] border border-light-border bg-warm-white px-3 text-sm text-on-surface outline-none transition placeholder:text-on-surface-variant/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-semibold text-on-surface">
-              Phone / WhatsApp
+            <label htmlFor="inquiry-email" className="mb-1.5 block text-sm font-semibold text-on-surface">
+              Email <span className="text-error" aria-hidden="true">*</span>
             </label>
             <input
+              id="inquiry-email"
+              type="email"
+              required
+              value={form.email}
+              onChange={(e) => update("email", e.target.value)}
+              placeholder="you@example.com"
+              className="h-11 w-full rounded-[var(--radius-button)] border border-light-border bg-warm-white px-3 text-sm text-on-surface outline-none transition placeholder:text-on-surface-variant/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+            />
+          </div>
+          <div>
+            <label htmlFor="inquiry-phone" className="mb-1.5 block text-sm font-semibold text-on-surface">
+              Phone <span className="text-error" aria-hidden="true">*</span>
+            </label>
+            <input
+              id="inquiry-phone"
               type="tel"
               required
+              value={form.phone}
+              onChange={(e) => update("phone", e.target.value)}
               placeholder="+977 98XXXXXXXX"
               className="h-11 w-full rounded-[var(--radius-button)] border border-light-border bg-warm-white px-3 text-sm text-on-surface outline-none transition placeholder:text-on-surface-variant/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-semibold text-on-surface">
+            <label htmlFor="inquiry-message" className="mb-1.5 block text-sm font-semibold text-on-surface">
               Message
             </label>
             <textarea
+              id="inquiry-message"
               rows={3}
+              value={form.message}
+              onChange={(e) => update("message", e.target.value)}
               placeholder={`I'm interested in ${property.title}…`}
               className="w-full rounded-[var(--radius-button)] border border-light-border bg-warm-white px-3 py-2.5 text-sm text-on-surface outline-none transition placeholder:text-on-surface-variant/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
             />
           </div>
-          <Button type="submit" className="w-full" size="lg">
-            Send Enquiry
+
+          {status === "error" && errorMsg && (
+            <p role="alert" className="rounded-[var(--radius-button)] bg-error/10 px-4 py-3 text-sm text-error">
+              {errorMsg}
+            </p>
+          )}
+
+          <Button
+            type="submit"
+            className="w-full"
+            size="lg"
+            disabled={status === "submitting"}
+          >
+            {status === "submitting" ? "Sending…" : "Send Enquiry"}
           </Button>
         </form>
       )}

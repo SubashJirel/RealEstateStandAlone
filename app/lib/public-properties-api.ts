@@ -265,6 +265,35 @@ export interface SiteVisitRequestPayload {
   message: string;
 }
 
+export interface PropertyInquiryPayload {
+  full_name: string;
+  phone: string;
+  email: string;
+  message: string;
+}
+
+export async function inquireProperty(
+  propertyId: number | string,
+  payload: PropertyInquiryPayload
+): Promise<void> {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  if (!baseUrl) {
+    throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
+  }
+
+  const url = `${baseUrl}/public/agencies/${LICENSE_NUMBER}/properties/${propertyId}/inquire/`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Property inquiry failed: ${res.status} ${res.statusText}`);
+  }
+}
+
 export async function requestSiteVisit(
   propertyId: number | string,
   payload: SiteVisitRequestPayload
