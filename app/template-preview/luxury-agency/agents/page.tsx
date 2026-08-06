@@ -5,6 +5,7 @@ import { RealEstateNavbar } from "@/components/real-estate/homepage/RealEstateNa
 import { Badge } from "@/components/ui/Badge";
 import { fetchPublicAgents } from "@/lib/public-agents-api";
 import { templateAgents } from "@/lib/real-estate-template";
+import { fetchPublicAgencyBySlug } from "@/lib/public-agency-api";
 
 export const metadata = {
   title: "Agents | Aurelia Estates Preview",
@@ -12,10 +13,12 @@ export const metadata = {
     "Search the Aurelia Estates agent directory and open detailed advisor profiles with listings and reviews.",
 };
 
-export default async function LuxuryAgencyAgentsPage() {
+export default async function LuxuryAgencyAgentsPage({ params }: { params: Promise<{ agencySlug?: string }> }) {
+  const routeParams = await params;
+  const agency = routeParams?.agencySlug ? await fetchPublicAgencyBySlug(routeParams.agencySlug) : null;
   let agents = templateAgents;
   try {
-    const liveAgents = await fetchPublicAgents();
+    const liveAgents = await fetchPublicAgents(agency?.license_number);
     if (liveAgents.length > 0) agents = liveAgents;
   } catch (error) {
     console.error("Failed to fetch agents, falling back to mock data:", error);

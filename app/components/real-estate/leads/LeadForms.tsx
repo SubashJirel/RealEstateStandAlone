@@ -15,6 +15,8 @@ import { listingProperties } from "@/lib/real-estate-template";
 import type { LiveListingProperty, SiteVisitRequestPayload } from "@/lib/public-properties-api";
 import { requestSiteVisit } from "@/lib/public-properties-api";
 import { cn } from "@/lib/utils";
+import { submitPublicSubmission } from "@/lib/public-agency-api";
+import { useAgencySite } from "@/components/real-estate/site/AgencySiteContext";
 import {
   FormNotice,
   SelectInput,
@@ -91,6 +93,7 @@ const propertyOptions = [
 ];
 
 export function ContactLeadForm({ className }: { className?: string }) {
+  const site = useAgencySite();
   const [form, setForm] = useState<ContactLeadState>({
     name: "",
     email: "",
@@ -99,7 +102,7 @@ export function ContactLeadForm({ className }: { className?: string }) {
     message: "",
   });
   const [errors, setErrors] = useState<Errors<ContactLeadState>>({});
-  const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
 
   function update(field: keyof ContactLeadState, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -107,7 +110,7 @@ export function ContactLeadForm({ className }: { className?: string }) {
     setStatus("idle");
   }
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const nextErrors: Errors<ContactLeadState> = {
       name: validateRequired(form.name, "Full name"),
@@ -120,7 +123,21 @@ export function ContactLeadForm({ className }: { className?: string }) {
       setStatus("error");
       return;
     }
-    setStatus("success");
+    setStatus("submitting");
+    try {
+      await submitPublicSubmission(site?.agency.slug || process.env.NEXT_PUBLIC_DEFAULT_AGENCY_SLUG || "", {
+        kind: "contact",
+        full_name: form.name,
+        email: form.email,
+        phone: form.phone,
+        message: form.message,
+        metadata: { interest: form.interest },
+        source_page: typeof window === "undefined" ? "" : window.location.pathname,
+      });
+      setStatus("success");
+    } catch {
+      setStatus("error");
+    }
   }
 
   return (
@@ -187,13 +204,13 @@ export function ContactLeadForm({ className }: { className?: string }) {
         />
       </div>
       <LeadStatus
-        status={status}
+        status={status === "submitting" ? "idle" : status}
         successTitle="Inquiry captured"
-        successText="This demo lead is ready to route into a CRM, inbox, or automation workflow."
+        successText="Your message has been sent to the agency team."
       />
-      <Button type="submit" size="lg" className="mt-6 w-full">
+      <Button type="submit" size="lg" className="mt-6 w-full" disabled={status === "submitting"}>
         <Send aria-hidden="true" />
-        Send Inquiry
+        {status === "submitting" ? "Sending…" : "Send Inquiry"}
       </Button>
     </FormShell>
   );
@@ -206,6 +223,7 @@ export function ScheduleViewingForm({
   className?: string;
   properties?: Pick<LiveListingProperty, "id" | "title">[];
 }) {
+  const site = useAgencySite();
   const [form, setForm] = useState<ScheduleViewingState>({
     name: "",
     email: "",
@@ -263,7 +281,7 @@ export function ScheduleViewingForm({
     };
 
     try {
-      await requestSiteVisit(form.propertyId, payload);
+      await requestSiteVisit(form.propertyId, payload, site?.agency.license_number);
       setStatus("success");
     } catch {
       setStatus("error");
@@ -407,6 +425,7 @@ export function ScheduleViewingForm({
 }
 
 export function PropertyInquiryLeadForm({ className }: { className?: string }) {
+  const site = useAgencySite();
   const [form, setForm] = useState<PropertyInquiryState>({
     name: "",
     email: "",
@@ -416,7 +435,7 @@ export function PropertyInquiryLeadForm({ className }: { className?: string }) {
     message: "",
   });
   const [errors, setErrors] = useState<Errors<PropertyInquiryState>>({});
-  const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
 
   function update(field: keyof PropertyInquiryState, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -424,7 +443,7 @@ export function PropertyInquiryLeadForm({ className }: { className?: string }) {
     setStatus("idle");
   }
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const nextErrors: Errors<PropertyInquiryState> = {
       name: validateRequired(form.name, "Full name"),
@@ -441,7 +460,21 @@ export function PropertyInquiryLeadForm({ className }: { className?: string }) {
       setStatus("error");
       return;
     }
-    setStatus("success");
+    setStatus("submitting");
+    try {
+      await submitPublicSubmission(site?.agency.slug || process.env.NEXT_PUBLIC_DEFAULT_AGENCY_SLUG || "", {
+        kind: "property_inquiry",
+        full_name: form.name,
+        email: form.email,
+        phone: form.phone,
+        message: form.message,
+        metadata: { property_title: form.property, timeline: form.timeline },
+        source_page: typeof window === "undefined" ? "" : window.location.pathname,
+      });
+      setStatus("success");
+    } catch {
+      setStatus("error");
+    }
   }
 
   return (
@@ -511,27 +544,28 @@ export function PropertyInquiryLeadForm({ className }: { className?: string }) {
         />
       </div>
       <LeadStatus
-        status={status}
+        status={status === "submitting" ? "idle" : status}
         successTitle="Property inquiry ready"
-        successText="This frontend-only state demonstrates how qualified listing leads can be captured."
+        successText="The agency has received your property inquiry."
       />
-      <Button type="submit" size="lg" className="mt-6 w-full">
+      <Button type="submit" size="lg" className="mt-6 w-full" disabled={status === "submitting"}>
         <Send aria-hidden="true" />
-        Send Property Inquiry
+        {status === "submitting" ? "Sending…" : "Send Property Inquiry"}
       </Button>
     </FormShell>
   );
 }
 
 export function NewsletterSubscription({ compact = false }: { compact?: boolean }) {
+  const site = useAgencySite();
   const [form, setForm] = useState<NewsletterState>({
     email: "",
     preference: "Luxury listings",
   });
   const [errors, setErrors] = useState<Errors<NewsletterState>>({});
-  const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const nextErrors: Errors<NewsletterState> = {
       email: validateEmail(form.email),
@@ -541,7 +575,18 @@ export function NewsletterSubscription({ compact = false }: { compact?: boolean 
       setStatus("error");
       return;
     }
-    setStatus("success");
+    setStatus("submitting");
+    try {
+      await submitPublicSubmission(site?.agency.slug || process.env.NEXT_PUBLIC_DEFAULT_AGENCY_SLUG || "", {
+        kind: "newsletter",
+        email: form.email,
+        metadata: { preference: form.preference },
+        source_page: typeof window === "undefined" ? "" : window.location.pathname,
+      });
+      setStatus("success");
+    } catch {
+      setStatus("error");
+    }
   }
 
   return (
@@ -597,18 +642,19 @@ export function NewsletterSubscription({ compact = false }: { compact?: boolean 
         />
       </div>
       <LeadStatus
-        status={status}
+        status={status === "submitting" ? "idle" : status}
         successTitle="Subscription saved"
-        successText="The demo confirms how newsletter leads can be captured without leaving the page."
+        successText="You are subscribed to agency updates."
       />
-      <Button type="submit" variant="outline" size="lg" className="mt-6 w-full">
-        Subscribe
+      <Button type="submit" variant="outline" size="lg" className="mt-6 w-full" disabled={status === "submitting"}>
+        {status === "submitting" ? "Subscribing…" : "Subscribe"}
       </Button>
     </form>
   );
 }
 
 export function HomeValuationForm({ className }: { className?: string }) {
+  const site = useAgencySite();
   const [form, setForm] = useState<ValuationState>({
     name: "",
     email: "",
@@ -619,7 +665,7 @@ export function HomeValuationForm({ className }: { className?: string }) {
     timeline: "Considering selling",
   });
   const [errors, setErrors] = useState<Errors<ValuationState>>({});
-  const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
 
   function update(field: keyof ValuationState, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -627,7 +673,7 @@ export function HomeValuationForm({ className }: { className?: string }) {
     setStatus("idle");
   }
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const nextErrors: Errors<ValuationState> = {
       name: validateRequired(form.name, "Full name"),
@@ -641,7 +687,25 @@ export function HomeValuationForm({ className }: { className?: string }) {
       setStatus("error");
       return;
     }
-    setStatus("success");
+    setStatus("submitting");
+    try {
+      await submitPublicSubmission(site?.agency.slug || process.env.NEXT_PUBLIC_DEFAULT_AGENCY_SLUG || "", {
+        kind: "valuation",
+        full_name: form.name,
+        email: form.email,
+        phone: form.phone,
+        metadata: {
+          address: form.address,
+          property_type: form.propertyType.toLowerCase(),
+          size: form.size,
+          timeline: form.timeline,
+        },
+        source_page: typeof window === "undefined" ? "" : window.location.pathname,
+      });
+      setStatus("success");
+    } catch {
+      setStatus("error");
+    }
   }
 
   return (
@@ -721,28 +785,29 @@ export function HomeValuationForm({ className }: { className?: string }) {
         />
       </div>
       <LeadStatus
-        status={status}
+        status={status === "submitting" ? "idle" : status}
         successTitle="Valuation request ready"
-        successText="A production version could trigger a seller consultation workflow and valuation checklist."
+        successText="Your valuation request has been added to the seller consultation workflow."
       />
-      <Button type="submit" variant="accent" size="lg" className="mt-6 w-full">
+      <Button type="submit" variant="accent" size="lg" className="mt-6 w-full" disabled={status === "submitting"}>
         <Calculator aria-hidden="true" />
-        Request Valuation
+        {status === "submitting" ? "Requesting…" : "Request Valuation"}
       </Button>
     </FormShell>
   );
 }
 
 export function BuyerGuideLeadForm({ className }: { className?: string }) {
+  const site = useAgencySite();
   const [form, setForm] = useState<LeadMagnetState>({
     name: "",
     email: "",
     goal: "Buying",
   });
   const [errors, setErrors] = useState<Errors<LeadMagnetState>>({});
-  const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const nextErrors: Errors<LeadMagnetState> = {
       name: validateRequired(form.name, "Full name"),
@@ -753,7 +818,19 @@ export function BuyerGuideLeadForm({ className }: { className?: string }) {
       setStatus("error");
       return;
     }
-    setStatus("success");
+    setStatus("submitting");
+    try {
+      await submitPublicSubmission(site?.agency.slug || process.env.NEXT_PUBLIC_DEFAULT_AGENCY_SLUG || "", {
+        kind: "buyer_guide",
+        full_name: form.name,
+        email: form.email,
+        metadata: { goal: form.goal },
+        source_page: typeof window === "undefined" ? "" : window.location.pathname,
+      });
+      setStatus("success");
+    } catch {
+      setStatus("error");
+    }
   }
 
   return (
@@ -817,12 +894,12 @@ export function BuyerGuideLeadForm({ className }: { className?: string }) {
         />
       </div>
       <LeadStatus
-        status={status}
+        status={status === "submitting" ? "idle" : status}
         successTitle="Guide request captured"
-        successText="The download CTA can become a nurturing entry point in production."
+        successText="Your guide request has been received. Check your inbox for follow-up."
       />
-      <Button type="submit" variant="accent" size="lg" className="mt-6 w-full">
-        Get the Guide
+      <Button type="submit" variant="accent" size="lg" className="mt-6 w-full" disabled={status === "submitting"}>
+        {status === "submitting" ? "Requesting…" : "Get the Guide"}
       </Button>
     </form>
   );

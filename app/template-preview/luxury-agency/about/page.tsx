@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { SiteLink as Link } from "@/components/real-estate/site/AgencySiteContext";
 import { ArrowRight } from "lucide-react";
 import { CompanyBreadcrumb } from "@/components/real-estate/company/CompanyBreadcrumb";
 import { CompanyIconCard, CompanyStatCard } from "@/components/real-estate/company/CompanyCards";

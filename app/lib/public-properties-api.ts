@@ -1,3 +1,8 @@
+/* External API payloads are normalized at this boundary before entering typed UI code. */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+import { getPublicApiBaseUrl } from "./public-agency-api";
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -42,7 +47,7 @@ export interface LiveListingProperty {
   price: string; // formatted: "NPR 3.85 Cr"
   priceRaw: number; // numeric value for sorting/filtering
   currency: string;
-  status: "For Sale" | "For Rent" | "Sold";
+  status: "For Sale" | "For Rent" | "For Lease";
   type: string; // capitalised property_type
   beds: number;
   baths: number;
@@ -57,7 +62,7 @@ export interface LiveListingProperty {
   gallery: LiveGalleryItem[];
   keyFeatures: LiveKeyFeature[];
   amenities: string[];
-  floorPlans: [];
+  floorPlans: LiveGalleryItem[];
   agent: LiveAgentDetail | null;
   yearBuilt: number | null;
   parkingSpaces: number | null;
@@ -67,6 +72,8 @@ export interface LiveListingProperty {
   latitude: string;
   longitude: string;
   virtualTour: string;
+  videoTour: string;
+  shareSlug: string;
   floors: number;
 }
 
@@ -81,9 +88,9 @@ function capitalize(str: string): string {
 
 function purposeToStatus(
   purpose: string
-): "For Sale" | "For Rent" | "Sold" {
+): "For Sale" | "For Rent" | "For Lease" {
   if (purpose === "rent") return "For Rent";
-  if (purpose === "sold") return "Sold";
+  if (purpose === "lease") return "For Lease";
   return "For Sale";
 }
 
@@ -119,14 +126,14 @@ const PLACEHOLDER_IMAGE =
 // ---------------------------------------------------------------------------
 
 export function mapProperty(property: any): LiveListingProperty {
-  const primaryMedia =
-    property.media?.find((m: any) => m.is_primary) ?? property.media?.[0];
+  const imageMedia = (property.media ?? []).filter((m: any) => m.media_type === "image");
+  const primaryMedia = imageMedia.find((m: any) => m.is_primary) ?? imageMedia[0];
 
-  const image: string = primaryMedia?.file ?? PLACEHOLDER_IMAGE;
+  const image: string = primaryMedia?.file ?? primaryMedia?.external_url ?? PLACEHOLDER_IMAGE;
 
-  const gallery: LiveGalleryItem[] = (property.media ?? []).map((m: any) => ({
+  const gallery: LiveGalleryItem[] = imageMedia.map((m: any) => ({
     id: m.id,
-    image: m.file,
+    image: m.file || m.external_url || m.thumbnail,
     title: m.title,
     isPrimary: m.is_primary,
   }));
@@ -146,11 +153,15 @@ export function mapProperty(property: any): LiveListingProperty {
     { label: "Year Built", value: property.year_built ?? "N/A" },
     {
       label: "Land Area",
-      value: `${property.land_area_value} ${property.land_area_unit}`,
+      value: property.land_area_value && property.land_area_unit
+        ? `${property.land_area_value} ${property.land_area_unit}`
+        : "N/A",
     },
     {
       label: "Built-up Area",
-      value: `${property.built_up_area_value} ${property.built_up_area_unit}`,
+      value: property.built_up_area_value && property.built_up_area_unit
+        ? `${property.built_up_area_value} ${property.built_up_area_unit}`
+        : "N/A",
     },
     {
       label: "Parking",
@@ -168,13 +179,23 @@ export function mapProperty(property: any): LiveListingProperty {
     },
     {
       label: "Price per sq.ft",
-      value: `${property.currency} ${property.price_per_sqft}`,
+      value: property.price_per_sqft ? `${property.currency} ${property.price_per_sqft}` : "N/A",
     },
   ];
 
-  const amenities: string[] = property.amenities
-    ? property.amenities.split(",").map((a: string) => a.trim())
-    : [];
+  const amenities: string[] = Array.isArray(property.amenities)
+    ? property.amenities.map((item: unknown) => String(item).trim()).filter(Boolean)
+    : typeof property.amenities === "string"
+      ? property.amenities.split(",").map((item: string) => item.trim()).filter(Boolean)
+      : [];
+  const floorPlans: LiveGalleryItem[] = (property.media ?? [])
+    .filter((item: any) => item.media_type === "floor_plan")
+    .map((item: any) => ({
+      id: item.id,
+      image: item.file || item.external_url || item.thumbnail,
+      title: item.title || "Floor plan",
+      isPrimary: item.is_primary,
+    }));
 
   return {
     id: property.id,
@@ -203,7 +224,7 @@ export function mapProperty(property: any): LiveListingProperty {
     gallery,
     keyFeatures,
     amenities,
-    floorPlans: [],
+    floorPlans,
 
     agent: property.assigned_agent_detail ?? null,
     yearBuilt: property.year_built ?? null,
@@ -211,11 +232,15 @@ export function mapProperty(property: any): LiveListingProperty {
     pricePerUnit: property.price_per_sqft
       ? `${property.currency} ${property.price_per_sqft} / sq.ft`
       : null,
-    lotSize: `${property.land_area_value} ${property.land_area_unit}`,
+    lotSize: property.land_area_value && property.land_area_unit
+      ? `${property.land_area_value} ${property.land_area_unit}`
+      : "N/A",
     furnishing: property.furnishing_status_display ?? null,
     latitude: property.latitude ?? "",
     longitude: property.longitude ?? "",
     virtualTour: property.virtual_tour_url ?? "",
+    videoTour: property.video_tour_url ?? "",
+    shareSlug: property.share_slug ?? "",
     floors: property.floors ?? 0,
   };
 }
@@ -226,21 +251,60 @@ export function mapProperty(property: any): LiveListingProperty {
 
 const LICENSE_NUMBER = process.env.NEXT_PUBLIC_AGENCY_LICENSE_NUMBER;
 
-function getLicenseNumber(): string {
-  if (!LICENSE_NUMBER) {
+function getLicenseNumber(licenseNumber?: string): string {
+  const resolved = licenseNumber || LICENSE_NUMBER;
+  if (!resolved) {
     throw new Error("NEXT_PUBLIC_AGENCY_LICENSE_NUMBER is not defined");
   }
 
-  return LICENSE_NUMBER;
+  return resolved;
 }
 
-export async function fetchPublicProperties(): Promise<LiveListingProperty[]> {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-  if (!baseUrl) {
-    throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
-  }
+export interface PublicPropertyQuery {
+  search?: string;
+  location?: string;
+  property_type?: string;
+  purpose?: string;
+  price_min?: string | number;
+  price_max?: string | number;
+  bedrooms?: string | number;
+  bathrooms?: string | number;
+  ordering?: string;
+  featured?: boolean;
+}
 
-  const url = `${baseUrl}/public/agencies/${getLicenseNumber()}/properties/`;
+export interface PublicPropertyFilterOptions {
+  property_types: Array<{ value: string; label: string }>;
+  purposes: Array<{ value: string; label: string }>;
+  locations: Array<{ value: string; label: string; type: string }>;
+}
+
+export async function fetchPublicPropertyFilterOptions(
+  licenseNumber?: string
+): Promise<PublicPropertyFilterOptions> {
+  const baseUrl = getPublicApiBaseUrl();
+  const response = await fetch(
+    `${baseUrl}/public/agencies/${getLicenseNumber(licenseNumber)}/properties/filter-options/`,
+    { next: { revalidate: 300 } }
+  );
+  if (!response.ok) throw new Error(`Failed to fetch property filters: ${response.status}`);
+  return response.json();
+}
+
+export async function fetchPublicProperties(
+  licenseNumber?: string,
+  query: PublicPropertyQuery = {}
+): Promise<LiveListingProperty[]> {
+  const baseUrl = getPublicApiBaseUrl();
+
+  const search = new URLSearchParams();
+  Object.entries(query).forEach(([key, value]) => {
+    if (value !== undefined && value !== "" && value !== "All" && value !== "Any") {
+      search.set(key, String(value));
+    }
+  });
+  const suffix = search.size ? `?${search}` : "";
+  const url = `${baseUrl}/public/agencies/${getLicenseNumber(licenseNumber)}/properties/${suffix}`;
 
   const res = await fetch(url, {
     // Revalidate every 60 seconds in Next.js cache
@@ -282,14 +346,12 @@ export interface PropertyInquiryPayload {
 
 export async function inquireProperty(
   propertyId: number | string,
-  payload: PropertyInquiryPayload
+  payload: PropertyInquiryPayload,
+  licenseNumber?: string
 ): Promise<void> {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-  if (!baseUrl) {
-    throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
-  }
+  const baseUrl = getPublicApiBaseUrl();
 
-  const url = `${baseUrl}/public/agencies/${getLicenseNumber()}/properties/${propertyId}/inquire/`;
+  const url = `${baseUrl}/public/agencies/${getLicenseNumber(licenseNumber)}/properties/${propertyId}/inquire/`;
 
   const res = await fetch(url, {
     method: "POST",
@@ -304,14 +366,12 @@ export async function inquireProperty(
 
 export async function requestSiteVisit(
   propertyId: number | string,
-  payload: SiteVisitRequestPayload
+  payload: SiteVisitRequestPayload,
+  licenseNumber?: string
 ): Promise<void> {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-  if (!baseUrl) {
-    throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
-  }
+  const baseUrl = getPublicApiBaseUrl();
 
-  const url = `${baseUrl}/public/agencies/${getLicenseNumber()}/properties/${propertyId}/request-site-visit/`;
+  const url = `${baseUrl}/public/agencies/${getLicenseNumber(licenseNumber)}/properties/${propertyId}/request-site-visit/`;
 
   const res = await fetch(url, {
     method: "POST",
@@ -331,14 +391,12 @@ export async function requestSiteVisit(
 // ---------------------------------------------------------------------------
 
 export async function fetchPublicPropertyById(
-  id: number | string
+  id: number | string,
+  licenseNumber?: string
 ): Promise<LiveListingProperty> {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-  if (!baseUrl) {
-    throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
-  }
+  const baseUrl = getPublicApiBaseUrl();
 
-  const url = `${baseUrl}/public/agencies/${getLicenseNumber()}/properties/${id}/`;
+  const url = `${baseUrl}/public/agencies/${getLicenseNumber(licenseNumber)}/properties/${id}/`;
 
   const res = await fetch(url, {
     next: { revalidate: 60 },
@@ -356,4 +414,36 @@ export async function fetchPublicPropertyById(
   const raw = Array.isArray(data) ? data[0] : data;
 
   return mapProperty(raw);
+}
+
+export async function fetchSimilarProperties(
+  id: number | string,
+  licenseNumber?: string
+): Promise<LiveListingProperty[]> {
+  const baseUrl = getPublicApiBaseUrl();
+  const response = await fetch(
+    `${baseUrl}/public/agencies/${getLicenseNumber(licenseNumber)}/properties/${id}/similar/`,
+    { next: { revalidate: 60 } }
+  );
+  if (!response.ok) throw new Error(`Failed to fetch similar properties: ${response.status}`);
+  const data = await response.json();
+  return (Array.isArray(data) ? data : data.results ?? []).map(mapProperty);
+}
+
+export async function trackPropertyEvent(
+  id: number | string,
+  eventType: "view" | "whatsapp_click" | "viber_click" | "call_click",
+  licenseNumber?: string,
+  metadata: Record<string, unknown> = {}
+): Promise<void> {
+  const baseUrl = getPublicApiBaseUrl();
+  await fetch(
+    `${baseUrl}/public/agencies/${getLicenseNumber(licenseNumber)}/properties/${id}/events/`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event_type: eventType, metadata }),
+      keepalive: true,
+    }
+  );
 }

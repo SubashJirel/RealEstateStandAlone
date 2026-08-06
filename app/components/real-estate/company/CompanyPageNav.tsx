@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { SiteLink as Link } from "@/components/real-estate/site/AgencySiteContext";
 import { companyPageLinks } from "@/lib/real-estate-company";
 import { cn } from "@/lib/utils";
 

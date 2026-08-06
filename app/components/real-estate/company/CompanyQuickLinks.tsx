@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { SiteLink as Link } from "@/components/real-estate/site/AgencySiteContext";
 import { ArrowRight, BriefcaseBusiness, CircleHelp, Compass, History, UsersRound } from "lucide-react";
 import { companyPageLinks } from "@/lib/real-estate-company";
 

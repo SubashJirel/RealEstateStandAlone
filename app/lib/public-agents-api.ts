@@ -1,3 +1,5 @@
+import { getPublicApiBaseUrl } from "./public-agency-api";
+
 // ---------------------------------------------------------------------------
 // Types — raw API response shape
 // ---------------------------------------------------------------------------
@@ -24,6 +26,15 @@ export interface ApiAgent {
   current_listing_ids: string[];
   sold_property_ids: string[];
   profile_completed: boolean;
+  rating: number;
+  reviews: Array<{
+    id: number;
+    name: string;
+    rating: number;
+    title: string;
+    comment: string;
+    created_at: string;
+  }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -59,7 +70,7 @@ export function mapApiAgentToAgent(raw: ApiAgent): Agent {
     image: raw.profile_image_url || raw.profile_image || PLACEHOLDER_AVATAR,
     dealsClosed: raw.deals_closed ?? 0,
     // API does not expose a rating — default to a sensible display value
-    rating: 0,
+    rating: raw.rating ?? 0,
     yearsExperience: raw.years_experience ?? 0,
     languages: splitCSV(raw.languages),
     specialties: splitCSV(raw.specialties),
@@ -70,7 +81,13 @@ export function mapApiAgentToAgent(raw: ApiAgent): Agent {
       facebook: raw.facebook_url || "",
     },
     currentListingIds: raw.current_listing_ids ?? [],
-    reviews: [],
+    reviews: (raw.reviews ?? []).map((review) => ({
+      id: String(review.id),
+      author: review.name,
+      location: "Verified client",
+      rating: review.rating,
+      comment: review.comment,
+    })),
   };
 }
 
@@ -80,21 +97,19 @@ export function mapApiAgentToAgent(raw: ApiAgent): Agent {
 
 const LICENSE_NUMBER = process.env.NEXT_PUBLIC_AGENCY_LICENSE_NUMBER;
 
-function getLicenseNumber(): string {
-  if (!LICENSE_NUMBER) {
+function getLicenseNumber(licenseNumber?: string): string {
+  const resolved = licenseNumber || LICENSE_NUMBER;
+  if (!resolved) {
     throw new Error("NEXT_PUBLIC_AGENCY_LICENSE_NUMBER is not defined");
   }
 
-  return LICENSE_NUMBER;
+  return resolved;
 }
 
-export async function fetchPublicAgents(): Promise<Agent[]> {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-  if (!baseUrl) {
-    throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
-  }
+export async function fetchPublicAgents(licenseNumber?: string): Promise<Agent[]> {
+  const baseUrl = getPublicApiBaseUrl();
 
-  const url = `${baseUrl}/public/agencies/${getLicenseNumber()}/agents/`;
+  const url = `${baseUrl}/public/agencies/${getLicenseNumber(licenseNumber)}/agents/`;
 
   const res = await fetch(url, {
     // Revalidate every 60 seconds via Next.js data cache
@@ -119,13 +134,10 @@ export async function fetchPublicAgents(): Promise<Agent[]> {
 // API fetch — single agent detail
 // ---------------------------------------------------------------------------
 
-export async function fetchPublicAgentById(id: number | string): Promise<Agent> {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-  if (!baseUrl) {
-    throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
-  }
+export async function fetchPublicAgentById(id: number | string, licenseNumber?: string): Promise<Agent> {
+  const baseUrl = getPublicApiBaseUrl();
 
-  const url = `${baseUrl}/public/agencies/${getLicenseNumber()}/agents/${id}/`;
+  const url = `${baseUrl}/public/agencies/${getLicenseNumber(licenseNumber)}/agents/${id}/`;
 
   const res = await fetch(url, {
     next: { revalidate: 60 },

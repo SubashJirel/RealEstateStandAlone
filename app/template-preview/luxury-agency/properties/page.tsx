@@ -1,4 +1,5 @@
 import { Building2 } from "lucide-react";
+import { Suspense } from "react";
 import { PropertyListingsBrowser } from "@/components/real-estate/listings/PropertyListingsBrowser";
 import { RealEstateFooter } from "@/components/real-estate/homepage/RealEstateFooter";
 import { RealEstateNavbar } from "@/components/real-estate/homepage/RealEstateNavbar";
@@ -51,7 +52,15 @@ export default function LuxuryAgencyPropertiesPage() {
 
       <section className="py-10 md:py-14">
         <div className="container-nexora">
-          <PropertyListingsBrowser />
+          <Suspense
+            fallback={
+              <div className="rounded-[var(--radius-card)] border border-outline-variant bg-surface-container p-10 text-center text-on-surface-variant">
+                Loading property filters…
+              </div>
+            }
+          >
+            <PropertyListingsBrowser />
+          </Suspense>
         </div>
       </section>
 

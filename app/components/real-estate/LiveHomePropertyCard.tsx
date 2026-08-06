@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { SiteLink as Link } from "@/components/real-estate/site/AgencySiteContext";
 import { Bath, BedDouble, MapPin, Ruler } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -30,7 +30,7 @@ export function LiveHomePropertyCard({ property, className }: LiveHomePropertyCa
           style={{ backgroundImage: `url(${property.image})` }}
         />
         <div className="absolute left-4 top-4 flex flex-wrap gap-2">
-          <Badge variant={property.status === "Sold" ? "sold" : "accent"}>
+          <Badge variant={property.status === "For Lease" ? "secondary" : "accent"}>
             {property.status}
           </Badge>
           {property.featured && <Badge variant="default">Featured</Badge>}

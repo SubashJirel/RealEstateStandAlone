@@ -1,7 +1,12 @@
-import Link from "next/link";
+"use client";
+
 import { Building2, Mail, MapPin, Phone } from "lucide-react";
+import Image from "next/image";
+import { SiteLink as Link, useAgencySite } from "@/components/real-estate/site/AgencySiteContext";
 
 export function RealEstateFooter() {
+  const agency = useAgencySite()?.agency;
+  const name = agency?.name || "Aurelia Estates";
   return (
     <footer id="contact" className="bg-charcoal text-inverse-on-surface">
       <div className="container-nexora py-12 md:py-16">
@@ -12,13 +17,12 @@ export function RealEstateFooter() {
               className="flex items-center gap-3"
             >
               <span className="flex size-10 items-center justify-center rounded-full bg-accent text-accent-foreground">
-                <Building2 className="size-5" aria-hidden="true" />
+                {agency?.logo ? <Image src={agency.logo} alt="" width={28} height={28} unoptimized className="size-7 rounded-full object-cover" /> : <Building2 className="size-5" aria-hidden="true" />}
               </span>
-              <span className="text-lg font-bold">Aurelia Estates</span>
+              <span className="text-lg font-bold">{name}</span>
             </Link>
             <p className="mt-5 max-w-sm text-sm leading-6 text-inverse-on-surface/70">
-              A premium real estate agency website template for luxury listings,
-              trusted advisors, and high-intent property inquiries.
+              {agency?.about || "Trusted local advisors for verified listings and high-intent property inquiries."}
             </p>
           </div>
 
@@ -152,22 +156,22 @@ export function RealEstateFooter() {
             <ul className="mt-5 space-y-3 text-sm text-inverse-on-surface/72">
               <li className="flex gap-2">
                 <MapPin className="mt-0.5 size-4 text-accent" aria-hidden="true" />
-                Durbar Marg, Kathmandu
+                {agency?.address || [agency?.city, agency?.district].filter(Boolean).join(", ") || "Kathmandu, Nepal"}
               </li>
               <li className="flex gap-2">
                 <Phone className="mt-0.5 size-4 text-accent" aria-hidden="true" />
-                +977 9800000000
+                {agency?.phone || "+977 9800000000"}
               </li>
               <li className="flex gap-2">
                 <Mail className="mt-0.5 size-4 text-accent" aria-hidden="true" />
-                hello@aurelia.example
+                {agency?.email || "hello@aurelia.example"}
               </li>
             </ul>
           </div>
         </div>
 
         <div className="mt-10 border-t border-white/10 pt-6 text-sm text-inverse-on-surface/55">
-          Copyright 2026 Aurelia Estates. Demo template content.
+          Copyright {new Date().getFullYear()} {name}. All rights reserved.
         </div>
       </div>
     </footer>

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { SiteLink as Link } from "@/components/real-estate/site/AgencySiteContext";
 import { MapPin } from "lucide-react";
 import { CompanyBreadcrumb } from "@/components/real-estate/company/CompanyBreadcrumb";
 import { CompanyIconCard } from "@/components/real-estate/company/CompanyCards";
@@ -10,6 +10,7 @@ import { RealEstateNavbar } from "@/components/real-estate/homepage/RealEstateNa
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { SectionHeader } from "@/components/ui/SectionHeader";
+import { CareerForm } from "@/components/real-estate/leads/CareerForm";
 import {
   careerBenefits,
   careerOpenings,
@@ -90,6 +91,7 @@ export default function CareersPage() {
         </div>
       </section>
 
+      <section className="section-space bg-cream"><div className="container-nexora"><CareerForm /></div></section>
       <CompanyCta
         title="Recruit advisors with the same confidence used to win clients."
         text="Careers, company story, mission, and listings now live together inside one complete agency template."

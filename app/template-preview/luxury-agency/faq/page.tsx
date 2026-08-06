@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { SiteLink as Link } from "@/components/real-estate/site/AgencySiteContext";
 import { ArrowRight, HelpCircle } from "lucide-react";
 import { CompanyBreadcrumb } from "@/components/real-estate/company/CompanyBreadcrumb";
 import { CompanyCta } from "@/components/real-estate/company/CompanyCta";
@@ -6,7 +6,7 @@ import { CompanyHero } from "@/components/real-estate/company/CompanyHero";
 import { CompanyPageNav } from "@/components/real-estate/company/CompanyPageNav";
 import { RealEstateFooter } from "@/components/real-estate/homepage/RealEstateFooter";
 import { RealEstateNavbar } from "@/components/real-estate/homepage/RealEstateNavbar";
-import { FAQAccordion } from "@/components/ui/FAQAccordion";
+import { AgencyFaqAccordion } from "@/components/real-estate/company/AgencyFaqAccordion";
 import { Button } from "@/components/ui/Button";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { companyFaqs } from "@/lib/real-estate-company";
@@ -57,7 +57,7 @@ export default function FaqPage() {
               eyebrow="Common Questions"
               title="Everything a Serious Property Client Expects to Ask"
             />
-            <FAQAccordion items={companyFaqs} />
+            <AgencyFaqAccordion fallback={companyFaqs} />
           </div>
         </div>
       </section>

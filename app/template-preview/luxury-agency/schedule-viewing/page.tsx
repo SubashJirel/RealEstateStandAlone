@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { SiteLink as Link } from "@/components/real-estate/site/AgencySiteContext";
 import { ArrowRight, Clock, KeyRound, UsersRound } from "lucide-react";
 import { CompanyHero } from "@/components/real-estate/company/CompanyHero";
 import { RealEstateFooter } from "@/components/real-estate/homepage/RealEstateFooter";
@@ -9,6 +9,7 @@ import {
 } from "@/components/real-estate/leads/LeadForms";
 import { Button } from "@/components/ui/Button";
 import { fetchPublicProperties } from "@/lib/public-properties-api";
+import { fetchPublicAgencyBySlug } from "@/lib/public-agency-api";
 
 export const metadata = {
   title: "Schedule Viewing | Aurelia Estates Preview",
@@ -34,10 +35,12 @@ const viewingSteps = [
   },
 ];
 
-export default async function ScheduleViewingPage() {
+export default async function ScheduleViewingPage({ params }: { params: Promise<{ agencySlug?: string }> }) {
+  const routeParams = await params;
+  const agency = routeParams?.agencySlug ? await fetchPublicAgencyBySlug(routeParams.agencySlug) : null;
   let properties: { id: number; title: string }[] = [];
   try {
-    const liveProperties = await fetchPublicProperties();
+    const liveProperties = await fetchPublicProperties(agency?.license_number);
     properties = liveProperties.map((p) => ({ id: p.id, title: p.title }));
   } catch (error) {
     console.error("Failed to fetch properties for viewing form:", error);

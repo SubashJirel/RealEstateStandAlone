@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { SiteLink as Link } from "@/components/real-estate/site/AgencySiteContext";
 import { CalendarCheck, Heart, Phone, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import type { PropertyDetail } from "@/lib/real-estate-template";
