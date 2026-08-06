@@ -224,7 +224,15 @@ export function mapProperty(property: any): LiveListingProperty {
 // API fetch — list
 // ---------------------------------------------------------------------------
 
-const LICENSE_NUMBER = "NR-001";
+const LICENSE_NUMBER = process.env.NEXT_PUBLIC_AGENCY_LICENSE_NUMBER;
+
+function getLicenseNumber(): string {
+  if (!LICENSE_NUMBER) {
+    throw new Error("NEXT_PUBLIC_AGENCY_LICENSE_NUMBER is not defined");
+  }
+
+  return LICENSE_NUMBER;
+}
 
 export async function fetchPublicProperties(): Promise<LiveListingProperty[]> {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -232,7 +240,7 @@ export async function fetchPublicProperties(): Promise<LiveListingProperty[]> {
     throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
   }
 
-  const url = `${baseUrl}/public/agencies/${LICENSE_NUMBER}/properties/`;
+  const url = `${baseUrl}/public/agencies/${getLicenseNumber()}/properties/`;
 
   const res = await fetch(url, {
     // Revalidate every 60 seconds in Next.js cache
@@ -281,7 +289,7 @@ export async function inquireProperty(
     throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
   }
 
-  const url = `${baseUrl}/public/agencies/${LICENSE_NUMBER}/properties/${propertyId}/inquire/`;
+  const url = `${baseUrl}/public/agencies/${getLicenseNumber()}/properties/${propertyId}/inquire/`;
 
   const res = await fetch(url, {
     method: "POST",
@@ -303,7 +311,7 @@ export async function requestSiteVisit(
     throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
   }
 
-  const url = `${baseUrl}/public/agencies/${LICENSE_NUMBER}/properties/${propertyId}/request-site-visit/`;
+  const url = `${baseUrl}/public/agencies/${getLicenseNumber()}/properties/${propertyId}/request-site-visit/`;
 
   const res = await fetch(url, {
     method: "POST",
@@ -330,7 +338,7 @@ export async function fetchPublicPropertyById(
     throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
   }
 
-  const url = `${baseUrl}/public/agencies/${LICENSE_NUMBER}/properties/${id}/`;
+  const url = `${baseUrl}/public/agencies/${getLicenseNumber()}/properties/${id}/`;
 
   const res = await fetch(url, {
     next: { revalidate: 60 },

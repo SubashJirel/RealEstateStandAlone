@@ -78,7 +78,15 @@ export function mapApiAgentToAgent(raw: ApiAgent): Agent {
 // API fetch
 // ---------------------------------------------------------------------------
 
-const LICENSE_NUMBER = "NR-001";
+const LICENSE_NUMBER = process.env.NEXT_PUBLIC_AGENCY_LICENSE_NUMBER;
+
+function getLicenseNumber(): string {
+  if (!LICENSE_NUMBER) {
+    throw new Error("NEXT_PUBLIC_AGENCY_LICENSE_NUMBER is not defined");
+  }
+
+  return LICENSE_NUMBER;
+}
 
 export async function fetchPublicAgents(): Promise<Agent[]> {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -86,7 +94,7 @@ export async function fetchPublicAgents(): Promise<Agent[]> {
     throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
   }
 
-  const url = `${baseUrl}/public/agencies/${LICENSE_NUMBER}/agents/`;
+  const url = `${baseUrl}/public/agencies/${getLicenseNumber()}/agents/`;
 
   const res = await fetch(url, {
     // Revalidate every 60 seconds via Next.js data cache
@@ -117,7 +125,7 @@ export async function fetchPublicAgentById(id: number | string): Promise<Agent> 
     throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
   }
 
-  const url = `${baseUrl}/public/agencies/${LICENSE_NUMBER}/agents/${id}/`;
+  const url = `${baseUrl}/public/agencies/${getLicenseNumber()}/agents/${id}/`;
 
   const res = await fetch(url, {
     next: { revalidate: 60 },
