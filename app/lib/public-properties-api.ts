@@ -381,6 +381,10 @@ export interface SiteVisitRequestPayload {
   email: string;
   preferred_datetime: string; // ISO 8601
   message: string;
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  distribution_code?: string;
 }
 
 export interface PropertyInquiryPayload {
@@ -388,6 +392,21 @@ export interface PropertyInquiryPayload {
   phone: string;
   email: string;
   message: string;
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  distribution_code?: string;
+}
+
+function currentDistributionAttribution() {
+  if (typeof window === "undefined") return {};
+  const params = new URLSearchParams(window.location.search);
+  return {
+    utm_source: params.get("utm_source") || undefined,
+    utm_medium: params.get("utm_medium") || undefined,
+    utm_campaign: params.get("utm_campaign") || undefined,
+    distribution_code: params.get("nexora_link") || undefined,
+  };
 }
 
 export async function inquireProperty(
@@ -402,7 +421,7 @@ export async function inquireProperty(
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ ...payload, ...currentDistributionAttribution() }),
   });
 
   if (!res.ok) {
@@ -422,7 +441,7 @@ export async function requestSiteVisit(
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ ...payload, ...currentDistributionAttribution() }),
   });
 
   if (!res.ok) {
@@ -483,12 +502,20 @@ export async function trackPropertyEvent(
   metadata: Record<string, unknown> = {}
 ): Promise<void> {
   const baseUrl = getPublicApiBaseUrl();
+  const attribution = currentDistributionAttribution();
   await fetch(
     `${baseUrl}/public/agencies/${getLicenseNumber(licenseNumber)}/properties/${id}/events/`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ event_type: eventType, metadata }),
+      body: JSON.stringify({
+        event_type: eventType,
+        metadata: {
+          ...metadata,
+          distribution_code: attribution.distribution_code,
+        },
+        ...attribution,
+      }),
       keepalive: true,
     }
   );
