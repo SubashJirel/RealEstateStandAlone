@@ -118,7 +118,7 @@ export function PropertyListingsBrowser() {
         const query = filters.search.trim().toLowerCase();
         const matchesSearch =
           !query ||
-          [property.title, property.address, property.location, property.type]
+          [property.title, property.address, property.location, property.type, property.classification]
             .join(" ")
             .toLowerCase()
             .includes(query);

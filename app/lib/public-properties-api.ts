@@ -75,6 +75,7 @@ export interface LiveListingProperty {
   videoTour: string;
   shareSlug: string;
   floors: number;
+  classification: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -181,6 +182,16 @@ export function mapProperty(property: any): LiveListingProperty {
       label: "Price per sq.ft",
       value: property.price_per_sqft ? `${property.currency} ${property.price_per_sqft}` : "N/A",
     },
+    { label: "Classification", value: titleCase(property.land_use_classification) },
+    { label: "Road", value: property.road_access_value ? `${property.road_access_value} ${property.road_access_unit} · ${titleCase(property.road_type)}` : titleCase(property.road_type) },
+    { label: "Plot Shape", value: titleCase(property.plot_shape) },
+    { label: "Mohada × Pichhad", value: property.mohada_value || property.pichhad_value ? `${property.mohada_value ?? "—"} × ${property.pichhad_value ?? "—"} ${property.plot_dimension_unit}` : "N/A" },
+    { label: "Nearby Route", value: property.major_road_distance_value ? `${property.major_road_distance_value} ${property.major_road_distance_unit} to ${property.nearest_major_road || titleCase(property.major_road_type)}` : "N/A" },
+    { label: "Price / Aana", value: property.price_per_aana ? formatPrice(property.price_per_aana, property.currency) : "N/A" },
+    { label: "Price / Dhur", value: property.price_per_dhur ? formatPrice(property.price_per_dhur, property.currency) : "N/A" },
+    { label: "Price / Kattha", value: property.price_per_kattha ? formatPrice(property.price_per_kattha, property.currency) : "N/A" },
+    { label: "Land price / sq.ft", value: property.price_per_land_sqft ? formatPrice(property.price_per_land_sqft, property.currency) : "N/A" },
+    { label: "Utilities", value: [[property.has_water_supply,"Water"],[property.has_electricity,"Electricity"],[property.has_drainage,"Drainage"],[property.has_sewage,"Sewage"]].filter(([available]) => available === true).map(([, label]) => label).join(", ") || "Not confirmed" },
   ];
 
   const amenities: string[] = Array.isArray(property.amenities)
@@ -216,7 +227,7 @@ export function mapProperty(property: any): LiveListingProperty {
     baths: property.bathrooms ?? 0,
     area: builtUpArea,
     address: property.address,
-    city: property.city,
+    city: property.municipality || property.city,
     location: property.location_display ?? `${property.neighbourhood}, ${property.city}`,
     featured: property.is_featured ?? false,
     listedAt: property.published_at ?? property.created_at,
@@ -242,6 +253,7 @@ export function mapProperty(property: any): LiveListingProperty {
     videoTour: property.video_tour_url ?? "",
     shareSlug: property.share_slug ?? "",
     floors: property.floors ?? 0,
+    classification: titleCase(property.land_use_classification),
   };
 }
 
@@ -260,6 +272,10 @@ function getLicenseNumber(licenseNumber?: string): string {
   return resolved;
 }
 
+function titleCase(str: string): string {
+  return str ? str.split("_").map(capitalize).join(" ") : "N/A";
+}
+
 export interface PublicPropertyQuery {
   search?: string;
   location?: string;
@@ -271,12 +287,24 @@ export interface PublicPropertyQuery {
   bathrooms?: string | number;
   ordering?: string;
   featured?: boolean;
+  municipality?: string;
+  ward_number?: string | number;
+  land_use_classification?: string;
+  road_type?: string;
+  plot_shape?: string;
+  land_area_min?: string | number;
+  land_area_max?: string | number;
+  land_area_unit?: string;
 }
 
 export interface PublicPropertyFilterOptions {
   property_types: Array<{ value: string; label: string }>;
   purposes: Array<{ value: string; label: string }>;
   locations: Array<{ value: string; label: string; type: string }>;
+  land_use_classifications?: Array<{ value: string; label: string }>;
+  area_units?: Array<{ value: string; label: string }>;
+  road_types?: Array<{ value: string; label: string }>;
+  plot_shapes?: Array<{ value: string; label: string }>;
 }
 
 export async function fetchPublicPropertyFilterOptions(
