@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { SiteLink as Link } from "@/components/real-estate/site/AgencySiteContext";
 import {
   ArrowRight,
   CalendarDays,
@@ -33,6 +33,7 @@ import {
   whyChoosePoints,
 } from "@/lib/real-estate-template";
 import { fetchPublicAgents } from "@/lib/public-agents-api";
+import { fetchPublicAgencyBySlug } from "@/lib/public-agency-api";
 
 export const metadata = {
   title: "Aurelia Estates Preview",
@@ -40,23 +41,44 @@ export const metadata = {
     "Premium real estate agency homepage template preview with luxury listings, agents, testimonials, and lead capture.",
 };
 
-export default async function LuxuryAgencyTemplatePage() {
+export default async function LuxuryAgencyTemplatePage({
+  params,
+}: {
+  params: Promise<{ agencySlug?: string }>;
+}) {
+  const routeParams = await params;
+  const agency = routeParams?.agencySlug
+    ? await fetchPublicAgencyBySlug(routeParams.agencySlug)
+    : null;
+  const config = agency?.website_config ?? {};
+  const licenseNumber = agency?.license_number;
   let liveProperties: LiveListingProperty[] = [];
   try {
-    liveProperties = await fetchPublicProperties();
+    liveProperties = await fetchPublicProperties(licenseNumber);
   } catch (error) {
     console.error("Failed to fetch properties:", error);
   }
 
   let homeAgents = templateAgents;
   try {
-    const liveAgents = await fetchPublicAgents();
-    console.log('liveAgents isss', liveAgents)
+    const liveAgents = await fetchPublicAgents(licenseNumber);
     if (liveAgents.length > 0) homeAgents = liveAgents;
   } catch (error) {
     console.error("Failed to fetch agents, falling back to mock data:", error);
   }
-console.log('Home agents iss', homeAgents)
+  const homeStats = config.statistics?.length
+    ? config.statistics.map((stat, index) => ({ id: `agency-stat-${index}`, ...stat, helper: stat.helper ?? "" }))
+    : templateStats;
+  const homeTestimonials = config.testimonials?.length
+    ? config.testimonials.map((item, index) => ({
+        id: `agency-testimonial-${index}`,
+        name: item.name,
+        role: item.role ?? "Client",
+        location: item.location ?? agency?.city ?? "",
+        quote: item.quote,
+        rating: item.rating ?? 5,
+      }))
+    : templateTestimonials;
   return (
     <div className="min-h-screen bg-warm-white text-on-surface">
       <RealEstateNavbar />
@@ -65,8 +87,7 @@ console.log('Home agents iss', homeAgents)
         <div
           className="absolute inset-0 bg-cover bg-center opacity-60"
           style={{
-            backgroundImage:
-              "url(https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1800&q=85)",
+            backgroundImage: `url(${agency?.cover_image || "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1800&q=85"})`,
           }}
           aria-hidden="true"
         />
@@ -74,13 +95,12 @@ console.log('Home agents iss', homeAgents)
 
         <div className="container-nexora relative grid min-h-[780px] items-center gap-10 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:py-24">
           <div className="max-w-3xl">
-            <Badge variant="accent">Luxury Real Estate Agency</Badge>
+            <Badge variant="accent">{config.hero_eyebrow || "Luxury Real Estate Agency"}</Badge>
             <h1 className="display-xl mt-6 max-w-3xl text-inverse-on-surface">
-              Find a Home That Matches Your Next Chapter.
+              {config.hero_title || "Find a Home That Matches Your Next Chapter."}
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-inverse-on-surface/78">
-              Discover refined homes, private villas, investment properties, and
-              premium land opportunities guided by trusted local advisors.
+              {config.hero_subtitle || "Discover refined homes, private villas, investment properties, and premium land opportunities guided by trusted local advisors."}
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button asChild variant="accent" size="lg">
@@ -115,7 +135,7 @@ console.log('Home agents iss', homeAgents)
 
       <section className="border-b border-light-border bg-cream/70 py-10">
         <div className="container-nexora grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {templateStats.map((stat) => (
+          {homeStats.map((stat) => (
             <StatsCard key={stat.id} stat={stat} />
           ))}
         </div>
@@ -266,7 +286,7 @@ console.log('Home agents iss', homeAgents)
             title="Clients Trust the Process"
           />
           <div className="grid gap-6 lg:grid-cols-2">
-            {templateTestimonials.map((testimonial) => (
+            {homeTestimonials.map((testimonial) => (
               <TestimonialCard
                 key={testimonial.id}
                 testimonial={testimonial}

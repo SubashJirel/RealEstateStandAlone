@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { SiteLink as Link } from "@/components/real-estate/site/AgencySiteContext";
 import { notFound } from "next/navigation";
 import type { ElementType } from "react";
 import {
@@ -25,9 +25,12 @@ import {
   type Agent,
 } from "@/lib/real-estate-template";
 import { fetchPublicAgentById } from "@/lib/public-agents-api";
+import { fetchPublicAgencyBySlug } from "@/lib/public-agency-api";
+import { fetchPublicProperties, type LiveListingProperty } from "@/lib/public-properties-api";
+import { AgentReviewForm } from "@/components/real-estate/agents/AgentReviewForm";
 
 interface AgentProfilePageProps {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ slug: string; agencySlug?: string }>;
 }
 
 export async function generateStaticParams() {
@@ -35,8 +38,9 @@ export async function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: AgentProfilePageProps) {
-  const { slug } = await params;
-  const agent = await resolveAgent(slug);
+  const { slug, agencySlug } = await params;
+  const agency = agencySlug ? await fetchPublicAgencyBySlug(agencySlug) : null;
+  const agent = await resolveAgent(slug, agency?.license_number);
 
   if (!agent) {
     return { title: "Agent Not Found | Aurelia Estates" };
@@ -49,10 +53,10 @@ export async function generateMetadata({ params }: AgentProfilePageProps) {
 }
 
 /** Resolve an agent by slug — numeric slugs are live API agents, name-based slugs use mock data. */
-async function resolveAgent(slug: string): Promise<Agent | null> {
+async function resolveAgent(slug: string, licenseNumber?: string): Promise<Agent | null> {
   if (/^\d+$/.test(slug)) {
     try {
-      return await fetchPublicAgentById(slug);
+      return await fetchPublicAgentById(slug, licenseNumber);
     } catch {
       return null;
     }
@@ -63,14 +67,23 @@ async function resolveAgent(slug: string): Promise<Agent | null> {
 export default async function AgentProfilePage({
   params,
 }: AgentProfilePageProps) {
-  const { slug } = await params;
-  const agent = await resolveAgent(slug);
+  const { slug, agencySlug } = await params;
+  const agency = agencySlug ? await fetchPublicAgencyBySlug(agencySlug) : null;
+  const agent = await resolveAgent(slug, agency?.license_number);
 
   if (!agent) {
     notFound();
   }
 
-  const listings = getAgentListings(agent);
+  let listings: Array<ReturnType<typeof getAgentListings>[number] | LiveListingProperty> = getAgentListings(agent);
+  if (/^\d+$/.test(agent.id) && agency) {
+    try {
+      const liveProperties = await fetchPublicProperties(agency.license_number);
+      listings = liveProperties.filter((property) => property.agent?.id === Number(agent.id));
+    } catch {
+      listings = [];
+    }
+  }
 
   return (
     <div className="min-h-screen bg-warm-white text-on-surface">
@@ -167,7 +180,11 @@ export default async function AgentProfilePage({
                   {listings.map((property) => (
                     <Link
                       key={property.id}
-                      href={getPropertyDetailPath(property)}
+                      href={
+                        typeof property.id === "number"
+                          ? `/template-preview/luxury-agency/properties/${property.id}`
+                          : getPropertyDetailPath({ id: String(property.id), title: property.title })
+                      }
                       className="card-hover group overflow-hidden rounded-[var(--radius-card)] border border-light-border bg-surface-container-lowest shadow-low"
                     >
                       <div className="aspect-[16/10] overflow-hidden bg-surface-container">
@@ -252,6 +269,7 @@ export default async function AgentProfilePage({
                   </p>
                 )}
               </section>
+              <AgentReviewForm agentId={agent.id} />
             </main>
 
             <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">

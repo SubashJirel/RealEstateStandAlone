@@ -8,6 +8,7 @@ import {
   fetchPublicProperties,
 } from "@/lib/public-properties-api";
 import { LivePropertyDetailView } from "@/components/real-estate/detail/LivePropertyDetailView";
+import { fetchPublicAgencyBySlug } from "@/lib/public-agency-api";
 
 // Mock data imports (keep working for existing slug-based routes)
 import { PropertyAgentInfo } from "@/components/real-estate/detail/PropertyAgentInfo";
@@ -30,7 +31,7 @@ import {
 } from "@/lib/property-detail-helpers";
 
 interface PropertyDetailPageProps {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ slug: string; agencySlug?: string }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -58,14 +59,15 @@ export async function generateStaticParams() {
 // ---------------------------------------------------------------------------
 
 export async function generateMetadata({ params }: PropertyDetailPageProps) {
-  const { slug } = await params;
+  const { slug, agencySlug } = await params;
+  const agency = agencySlug ? await fetchPublicAgencyBySlug(agencySlug) : null;
 
   // Numeric → live API property
   if (/^\d+$/.test(slug)) {
     try {
-      const property = await fetchPublicPropertyById(slug);
+      const property = await fetchPublicPropertyById(slug, agency?.license_number);
       return {
-        title: `${property.title} | Aurelia Estates`,
+        title: `${property.title} | ${agency?.name || "Aurelia Estates"}`,
         description: property.summary,
       };
     } catch {
@@ -89,13 +91,14 @@ export async function generateMetadata({ params }: PropertyDetailPageProps) {
 export default async function PropertyDetailPage({
   params,
 }: PropertyDetailPageProps) {
-  const { slug } = await params;
+  const { slug, agencySlug } = await params;
+  const agency = agencySlug ? await fetchPublicAgencyBySlug(agencySlug) : null;
 
   // ── Live API path (numeric ID) ────────────────────────────────────────────
   if (/^\d+$/.test(slug)) {
     let property;
     try {
-      property = await fetchPublicPropertyById(slug);
+      property = await fetchPublicPropertyById(slug, agency?.license_number);
     } catch {
       notFound();
     }

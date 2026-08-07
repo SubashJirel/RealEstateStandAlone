@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { SiteChrome } from "@/components/layout/SiteChrome";
+import { LocalizationProvider } from "@/components/localization/LocalizationProvider";
 import "./globals.css";
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -24,9 +25,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${plusJakarta.variable} antialiased`}>
-        <SiteChrome>{children}</SiteChrome>
+        <LocalizationProvider>
+          <SiteChrome>{children}</SiteChrome>
+        </LocalizationProvider>
       </body>
     </html>
   );

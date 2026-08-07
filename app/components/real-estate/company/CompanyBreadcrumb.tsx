@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { SiteLink as Link } from "@/components/real-estate/site/AgencySiteContext";
 import { ChevronRight, Home } from "lucide-react";
 
 interface CompanyBreadcrumbProps {

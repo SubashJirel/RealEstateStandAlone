@@ -1,7 +1,8 @@
 "use client";
 
-import Link from "next/link";
-import { useState } from "react";
+import { SiteLink as Link, useAgencySite } from "@/components/real-estate/site/AgencySiteContext";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Bath,
   BedDouble,
@@ -27,6 +28,7 @@ import {
   Check,
   Dumbbell,
   Flame,
+  Flag,
   Leaf,
   Shield,
   Sparkles,
@@ -38,7 +40,10 @@ import {
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
-import type { LiveListingProperty } from "@/lib/public-properties-api";
+import { fetchSimilarProperties, inquireProperty, trackPropertyEvent, type LiveListingProperty } from "@/lib/public-properties-api";
+import { getCustomerSession, toggleSavedProperty } from "@/lib/public-customer-api";
+import { submitPublicSubmission } from "@/lib/public-agency-api";
+import { useLocalization } from "@/components/localization/LocalizationProvider";
 
 // ---------------------------------------------------------------------------
 // Main layout
@@ -49,6 +54,12 @@ export function LivePropertyDetailView({
 }: {
   property: LiveListingProperty;
 }) {
+  const site = useAgencySite();
+  useEffect(() => {
+    void trackPropertyEvent(property.id, "view", site?.agency.license_number, {
+      path: window.location.pathname,
+    });
+  }, [property.id, site?.agency.license_number]);
   // Derive image array from gallery (fall back to the card thumbnail)
   const images =
     property.gallery.length > 0
@@ -69,10 +80,13 @@ export function LivePropertyDetailView({
           <div className="grid gap-10 lg:grid-cols-[1fr_380px] lg:gap-12 xl:grid-cols-[1fr_420px]">
             <div className="space-y-12 md:space-y-16">
               <LiveOverview property={property} />
+              <ListingTrustPanel property={property} />
               <LiveKeyFeatures property={property} />
               <LiveAmenities property={property} />
+              <LiveFloorPlansAndTours property={property} />
               <LiveMapPlaceholder property={property} />
               <LiveDescription property={property} />
+              <LiveSimilarProperties property={property} />
             </div>
 
             <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
@@ -81,6 +95,7 @@ export function LivePropertyDetailView({
                 <LiveAgentInfo
                   agent={property.agent}
                   propertyTitle={property.title}
+                  propertyId={property.id}
                 />
               )}
               <LiveInquiryForm property={property} />
@@ -274,19 +289,8 @@ function LiveImageGallery({
 // Overview
 // ---------------------------------------------------------------------------
 
-function formatListedDate(isoDate: string): string {
-  try {
-    return new Date(isoDate).toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    });
-  } catch {
-    return isoDate;
-  }
-}
-
 function LiveOverview({ property }: { property: LiveListingProperty }) {
+  const localization = useLocalization();
   return (
     <section aria-labelledby="property-overview-heading">
       <div className="flex flex-wrap items-center gap-2">
@@ -294,6 +298,8 @@ function LiveOverview({ property }: { property: LiveListingProperty }) {
           {property.status}
         </Badge>
         <Badge variant="outline">{property.type}</Badge>
+        {property.availabilityStatus !== "Available" && <Badge variant="secondary">{property.availabilityStatus}</Badge>}
+        {property.verificationLevel !== "unverified" && <Badge variant="default">{property.verificationLabel}</Badge>}
         {property.featured && <Badge variant="default">Featured</Badge>}
         <span className="text-xs font-medium text-on-surface-variant">
           {property.displayPropertyId}
@@ -336,7 +342,7 @@ function LiveOverview({ property }: { property: LiveListingProperty }) {
         {property.listedAt && (
           <span className="flex items-center gap-2">
             <CalendarDays className="size-4 text-accent" aria-hidden="true" />
-            Listed {formatListedDate(property.listedAt)}
+            Listed {localization.date(property.listedAt)}
           </span>
         )}
         {property.yearBuilt && (
@@ -482,6 +488,80 @@ function LiveAmenities({ property }: { property: LiveListingProperty }) {
   );
 }
 
+function LiveFloorPlansAndTours({ property }: { property: LiveListingProperty }) {
+  if (!property.floorPlans.length && !property.virtualTour && !property.videoTour) return null;
+  return (
+    <section aria-labelledby="property-media-heading">
+      <SectionTitle eyebrow="Plans & Tours" title="Explore the Property" id="property-media-heading" />
+      {property.floorPlans.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {property.floorPlans.map((plan) => (
+            <a key={plan.id} href={plan.image} target="_blank" rel="noreferrer" className="overflow-hidden rounded-[var(--radius-card)] border border-light-border bg-white shadow-low">
+              <div className="aspect-[4/3] bg-cover bg-center" style={{ backgroundImage: `url(${plan.image})` }} />
+              <p className="p-4 text-sm font-semibold text-on-surface">{plan.title}</p>
+            </a>
+          ))}
+        </div>
+      )}
+      <div className="mt-4 flex flex-wrap gap-3">
+        {property.virtualTour && <Button asChild><a href={property.virtualTour} target="_blank" rel="noreferrer">Open virtual tour</a></Button>}
+        {property.videoTour && <Button asChild variant="outline"><a href={property.videoTour} target="_blank" rel="noreferrer">Watch video tour</a></Button>}
+      </div>
+    </section>
+  );
+}
+
+function ListingTrustPanel({ property }: { property: LiveListingProperty }) {
+  const site = useAgencySite();
+  const localization = useLocalization();
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const [message, setMessage] = useState("");
+  const [reporter, setReporter] = useState({ name: "", email: "" });
+  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!site) return;
+    setStatus("submitting");
+    try {
+      await submitPublicSubmission(site.agency.slug, {
+        kind: "listing_report", property: property.id, full_name: reporter.name,
+        email: reporter.email, message, metadata: { reason }, source_page: window.location.pathname,
+      });
+      setStatus("success");
+    } catch { setStatus("error"); }
+  }
+  return <section className="rounded-[var(--radius-panel)] border border-primary/20 bg-primary/5 p-5 shadow-low">
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="flex items-center gap-2 font-semibold text-on-surface"><CalendarCheck className="size-5 text-primary" />Recently confirmed by the agency</p><p className="mt-1 text-sm text-on-surface-variant">{property.lastVerifiedAt ? `Last verified ${localization.date(property.lastVerifiedAt)}` : "Agency confirmation pending"}{property.ownerConfirmedAt ? ` · Owner confirmed ${localization.date(property.ownerConfirmedAt)}` : ""}</p></div><Button type="button" variant="outline" onClick={() => setOpen((value) => !value)}><Flag className="size-4" />Report listing</Button></div>
+    {open && status !== "success" && <form onSubmit={submit} className="mt-5 grid gap-3 border-t border-primary/15 pt-5 md:grid-cols-2"><label className="text-xs font-medium">Reason<select required value={reason} onChange={(event) => setReason(event.target.value)} className="mt-1 h-11 w-full rounded-xl border border-light-border bg-white px-3"><option value="">Choose a reason</option><option value="unavailable">No longer available</option><option value="already_sold">Already sold or rented</option><option value="duplicate">Duplicate listing</option><option value="incorrect_information">Incorrect information</option><option value="suspicious">Suspicious listing</option><option value="other">Other</option></select></label><label className="text-xs font-medium">Details<textarea required value={message} onChange={(event) => setMessage(event.target.value)} rows={3} className="mt-1 w-full rounded-xl border border-light-border bg-white p-3" /></label><label className="text-xs font-medium">Name (optional)<input value={reporter.name} onChange={(event) => setReporter({ ...reporter, name: event.target.value })} className="mt-1 h-11 w-full rounded-xl border border-light-border bg-white px-3" /></label><label className="text-xs font-medium">Email (optional)<input type="email" value={reporter.email} onChange={(event) => setReporter({ ...reporter, email: event.target.value })} className="mt-1 h-11 w-full rounded-xl border border-light-border bg-white px-3" /></label>{status === "error" && <p className="text-sm text-error md:col-span-2">Unable to submit this report.</p>}<Button type="submit" disabled={status === "submitting"} className="md:col-span-2">{status === "submitting" ? "Sending…" : "Send report"}</Button></form>}
+    {status === "success" && <p className="mt-4 text-sm font-semibold text-primary">Thank you. The agency will review this report.</p>}
+  </section>;
+}
+
+function LiveSimilarProperties({ property }: { property: LiveListingProperty }) {
+  const site = useAgencySite();
+  const [items, setItems] = useState<LiveListingProperty[]>([]);
+  useEffect(() => {
+    fetchSimilarProperties(property.id, site?.agency.license_number)
+      .then(setItems)
+      .catch(() => setItems([]));
+  }, [property.id, site?.agency.license_number]);
+  if (!items.length) return null;
+  return (
+    <section aria-labelledby="similar-properties-heading">
+      <SectionTitle eyebrow="You May Also Like" title="Similar Properties" id="similar-properties-heading" />
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {items.slice(0, 3).map((item) => (
+          <Link key={item.id} href={`/template-preview/luxury-agency/properties/${item.id}`} className="overflow-hidden rounded-[var(--radius-card)] border border-light-border bg-white shadow-low">
+            <div className="aspect-[4/3] bg-cover bg-center" style={{ backgroundImage: `url(${item.image})` }} />
+            <div className="p-4"><p className="font-semibold text-on-surface">{item.title}</p><p className="mt-1 text-sm font-bold text-primary">{item.price}</p></div>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Map placeholder
 // ---------------------------------------------------------------------------
@@ -580,7 +660,26 @@ function LiveDescription({ property }: { property: LiveListingProperty }) {
 // ---------------------------------------------------------------------------
 
 function LivePriceSection({ property }: { property: LiveListingProperty }) {
+  const site = useAgencySite();
+  const router = useRouter();
+  const [saved, setSaved] = useState(false);
   const priceLabel = property.status === "For Rent" ? "Monthly Rent" : "Asking Price";
+
+  async function saveProperty() {
+    if (!site) return;
+    if (!getCustomerSession(site.agency.slug)) {
+      router.push(`${site.basePath}/portal?next=${encodeURIComponent(window.location.pathname)}`);
+      return;
+    }
+    await toggleSavedProperty(site.agency.slug, property.id);
+    setSaved((value) => !value);
+  }
+
+  async function shareProperty() {
+    const url = window.location.href;
+    if (navigator.share) await navigator.share({ title: property.title, url });
+    else await navigator.clipboard.writeText(url);
+  }
   return (
     <section
       aria-labelledby="property-price-heading"
@@ -606,18 +705,21 @@ function LivePriceSection({ property }: { property: LiveListingProperty }) {
             Schedule Viewing
           </Link>
         </Button>
-        <Button variant="outline" size="lg" className="w-full">
-          <Phone aria-hidden="true" />
-          Call Advisor
-        </Button>
+        {property.agent?.phone && (
+          <Button variant="outline" size="lg" className="w-full" asChild>
+            <a href={`tel:${property.agent.phone.replace(/\s/g, "")}`} onClick={() => void trackPropertyEvent(property.id, "call_click", site?.agency.license_number)}>
+              <Phone aria-hidden="true" /> Call Advisor
+            </a>
+          </Button>
+        )}
       </div>
 
       <div className="mt-4 flex gap-2">
-        <Button variant="ghost" size="sm" className="flex-1">
+        <Button type="button" variant="ghost" size="sm" className="flex-1" onClick={() => void saveProperty()}>
           <Heart aria-hidden="true" />
-          Save
+          {saved ? "Saved" : "Save"}
         </Button>
-        <Button variant="ghost" size="sm" className="flex-1">
+        <Button type="button" variant="ghost" size="sm" className="flex-1" onClick={() => void shareProperty()}>
           <Share2 aria-hidden="true" />
           Share
         </Button>
@@ -649,15 +751,17 @@ function PriceRow({ label, value }: { label: string; value: string }) {
 // ---------------------------------------------------------------------------
 
 import type { LiveAgentDetail, PropertyInquiryPayload } from "@/lib/public-properties-api";
-import { inquireProperty } from "@/lib/public-properties-api";
 
 function LiveAgentInfo({
   agent,
   propertyTitle,
+  propertyId,
 }: {
   agent: LiveAgentDetail;
   propertyTitle: string;
+  propertyId: number;
 }) {
+  const site = useAgencySite();
   return (
     <section
       aria-labelledby="agent-info-heading"
@@ -720,7 +824,7 @@ function LiveAgentInfo({
       <div className="mt-5 flex gap-3">
         {agent.phone ? (
           <Button variant="primary" className="flex-1" asChild>
-            <a href={`tel:${agent.phone.replace(/\s/g, "")}`}>
+            <a href={`tel:${agent.phone.replace(/\s/g, "")}`} onClick={() => void trackPropertyEvent(propertyId, "call_click", site?.agency.license_number)}>
               <Phone aria-hidden="true" />
               Call
             </a>
@@ -751,6 +855,7 @@ function LiveAgentInfo({
 // ---------------------------------------------------------------------------
 
 function LiveInquiryForm({ property }: { property: LiveListingProperty }) {
+  const site = useAgencySite();
   const [form, setForm] = useState<PropertyInquiryPayload & { name: string }>({
     full_name: "",
     phone: "",
@@ -794,7 +899,7 @@ function LiveInquiryForm({ property }: { property: LiveListingProperty }) {
         phone: form.phone,
         email: form.email,
         message: form.message || `I'm interested in ${property.title}.`,
-      });
+      }, site?.agency.license_number);
       setStatus("success");
     } catch {
       setErrorMsg("Something went wrong. Please try again.");

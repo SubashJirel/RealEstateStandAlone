@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { SiteLink as Link } from "@/components/real-estate/site/AgencySiteContext";
 import { ArrowRight, Phone } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 

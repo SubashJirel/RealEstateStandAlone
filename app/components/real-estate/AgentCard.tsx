@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { SiteLink as Link } from "@/components/real-estate/site/AgencySiteContext";
 import { Mail, Phone, Star } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { getAgentProfilePath, type Agent } from "@/lib/real-estate-template";

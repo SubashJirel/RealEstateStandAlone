@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Filter, Loader2, Search, SlidersHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
@@ -9,6 +10,8 @@ import {
   type LiveListingProperty,
 } from "@/lib/public-properties-api";
 import { LiveListingPropertyCard } from "./LiveListingPropertyCard";
+import { useAgencySite } from "@/components/real-estate/site/AgencySiteContext";
+import { getCustomerSession, getSavedProperties, toggleSavedProperty } from "@/lib/public-customer-api";
 
 type SortOption = "featured" | "newest" | "price-low" | "price-high";
 
@@ -42,17 +45,26 @@ const countOptions = ["Any", "1+", "2+", "3+", "4+", "5+"] as const;
 const propertiesPerPage = 6;
 
 export function PropertyListingsBrowser() {
+  const site = useAgencySite();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   // ── Data state ──────────────────────────────────────────────────────────
   const [properties, setProperties] = useState<LiveListingProperty[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchPublicProperties()
+  const loadProperties = useCallback(() => {
+    return fetchPublicProperties(site?.agency.license_number, {
+      purpose: searchParams.get("purpose") || undefined,
+    })
       .then((data) => setProperties(data))
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [searchParams, site?.agency.license_number]);
+
+  useEffect(() => {
+    void loadProperties();
+  }, [loadProperties]);
 
   // ── Dynamic filter options derived from loaded data ──────────────────────
   const locationOptions = useMemo(() => {
@@ -66,11 +78,24 @@ export function PropertyListingsBrowser() {
   }, [properties]);
 
   // ── UI state ────────────────────────────────────────────────────────────
-  const [filters, setFilters] = useState<Filters>(defaultFilters);
+  const [filters, setFilters] = useState<Filters>(() => ({
+    ...defaultFilters,
+    search: searchParams.get("search") || "",
+    location: searchParams.get("location") || "All",
+    propertyType: searchParams.get("property_type") || "All",
+    priceRange: searchParams.get("price_range") || "Any",
+  }));
   const [sort, setSort] = useState<SortOption>("featured");
   const [page, setPage] = useState(1);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!site || !getCustomerSession(site.agency.slug)) return;
+    getSavedProperties(site.agency.slug)
+      .then((items) => setFavorites(new Set(items.map((item) => String(item.property)))))
+      .catch(() => undefined);
+  }, [site]);
 
   function updateFilter(key: keyof Filters, value: string) {
     setFilters((current) => ({ ...current, [key]: value }));
@@ -93,7 +118,7 @@ export function PropertyListingsBrowser() {
         const query = filters.search.trim().toLowerCase();
         const matchesSearch =
           !query ||
-          [property.title, property.address, property.location, property.type]
+          [property.title, property.address, property.location, property.type, property.classification]
             .join(" ")
             .toLowerCase()
             .includes(query);
@@ -133,7 +158,19 @@ export function PropertyListingsBrowser() {
     currentPage * propertiesPerPage
   );
 
-  function toggleFavorite(id: string) {
+  async function toggleFavorite(id: string) {
+    if (site && !getCustomerSession(site.agency.slug)) {
+      router.push(`${site.basePath}/portal?next=${encodeURIComponent(window.location.pathname)}`);
+      return;
+    }
+    if (site) {
+      try {
+        await toggleSavedProperty(site.agency.slug, Number(id));
+      } catch (error) {
+        setError(error instanceof Error ? error.message : "Unable to update saved property.");
+        return;
+      }
+    }
     setFavorites((current) => {
       const next = new Set(current);
       if (next.has(id)) {
@@ -169,10 +206,7 @@ export function PropertyListingsBrowser() {
           onClick={() => {
             setLoading(true);
             setError(null);
-            fetchPublicProperties()
-              .then(setProperties)
-              .catch((err: Error) => setError(err.message))
-              .finally(() => setLoading(false));
+            void loadProperties();
           }}
         >
           Retry

@@ -1,5 +1,5 @@
-import Link from "next/link";
-import { Bath, BedDouble, Heart, MapPin, Ruler } from "lucide-react";
+import { SiteLink as Link } from "@/components/real-estate/site/AgencySiteContext";
+import { Bath, BedDouble, Heart, MapPin, Ruler, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/utils";
 import type { LiveListingProperty } from "@/lib/public-properties-api";
@@ -38,6 +38,8 @@ export function LiveListingPropertyCard({
               {property.status}
             </Badge>
             <Badge variant="outline">{property.type}</Badge>
+            {property.availabilityStatus !== "Available" && <Badge variant="secondary">{property.availabilityStatus}</Badge>}
+            {property.fullyVerified && <Badge variant="default"><ShieldCheck className="mr-1 size-3" />Verified</Badge>}
           </div>
           <button
             type="button"

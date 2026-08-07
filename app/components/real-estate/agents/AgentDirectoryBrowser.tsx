@@ -82,7 +82,7 @@ export function AgentDirectoryBrowser({ agents }: AgentDirectoryBrowserProps) {
         return matchesSearch && matchesLocation && matchesSpecialty;
       })
       .sort((a, b) => sortAgents(a, b, sort));
-  }, [filters, sort]);
+  }, [agents, filters, sort]);
 
   return (
     <div>
