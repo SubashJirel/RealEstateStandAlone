@@ -3,10 +3,15 @@
 import { Building2, Mail, MapPin, Phone } from "lucide-react";
 import Image from "next/image";
 import { SiteLink as Link, useAgencySite } from "@/components/real-estate/site/AgencySiteContext";
+import { useLocalization } from "@/components/localization/LocalizationProvider";
+import { formatNepalAddress } from "@/lib/localization";
 
 export function RealEstateFooter() {
   const agency = useAgencySite()?.agency;
   const name = agency?.name || "Aurelia Estates";
+  const localization = useLocalization();
+  const { t } = localization;
+  const address = agency?.address_display || formatNepalAddress(agency) || "Kathmandu, Nepal";
   return (
     <footer id="contact" className="bg-charcoal text-inverse-on-surface">
       <div className="container-nexora py-12 md:py-16">
@@ -22,13 +27,13 @@ export function RealEstateFooter() {
               <span className="text-lg font-bold">{name}</span>
             </Link>
             <p className="mt-5 max-w-sm text-sm leading-6 text-inverse-on-surface/70">
-              {agency?.about || "Trusted local advisors for verified listings and high-intent property inquiries."}
+              {agency?.about || t("trustedAdvisors")}
             </p>
           </div>
 
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-accent">
-              Explore
+              {t("explore")}
             </h3>
             <ul className="mt-5 space-y-3 text-sm text-inverse-on-surface/72">
               <li>
@@ -36,7 +41,7 @@ export function RealEstateFooter() {
                   href="/template-preview/luxury-agency/properties"
                   className="hover:text-accent"
                 >
-                  Buy
+                  {t("buy")}
                 </Link>
               </li>
               <li>
@@ -44,7 +49,7 @@ export function RealEstateFooter() {
                   href="/template-preview/luxury-agency/properties"
                   className="hover:text-accent"
                 >
-                  Rent
+                  {t("rent")}
                 </Link>
               </li>
               <li>
@@ -52,7 +57,7 @@ export function RealEstateFooter() {
                   href="/template-preview/luxury-agency/properties"
                   className="hover:text-accent"
                 >
-                  Properties
+                  {t("properties")}
                 </Link>
               </li>
               <li>
@@ -60,7 +65,7 @@ export function RealEstateFooter() {
                   href="/template-preview/luxury-agency/agents"
                   className="hover:text-accent"
                 >
-                  Agents
+                  {t("agents")}
                 </Link>
               </li>
               <li>
@@ -68,7 +73,7 @@ export function RealEstateFooter() {
                   href="/template-preview/luxury-agency/contact"
                   className="hover:text-accent"
                 >
-                  Contact
+                  {t("contact")}
                 </Link>
               </li>
             </ul>
@@ -76,7 +81,7 @@ export function RealEstateFooter() {
 
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-accent">
-              Company
+              {t("company")}
             </h3>
             <ul className="mt-5 space-y-3 text-sm text-inverse-on-surface/72">
               <li>
@@ -84,7 +89,7 @@ export function RealEstateFooter() {
                   href="/template-preview/luxury-agency/about"
                   className="hover:text-accent"
                 >
-                  About Us
+                  {t("aboutUs")}
                 </Link>
               </li>
               <li>
@@ -92,7 +97,7 @@ export function RealEstateFooter() {
                   href="/template-preview/luxury-agency/mission"
                   className="hover:text-accent"
                 >
-                  Our Mission
+                  {t("ourMission")}
                 </Link>
               </li>
               <li>
@@ -100,7 +105,7 @@ export function RealEstateFooter() {
                   href="/template-preview/luxury-agency/story"
                   className="hover:text-accent"
                 >
-                  Our Story
+                  {t("ourStory")}
                 </Link>
               </li>
               <li>
@@ -108,7 +113,7 @@ export function RealEstateFooter() {
                   href="/template-preview/luxury-agency/careers"
                   className="hover:text-accent"
                 >
-                  Careers
+                  {t("careers")}
                 </Link>
               </li>
               <li>
@@ -116,7 +121,7 @@ export function RealEstateFooter() {
                   href="/template-preview/luxury-agency/faq"
                   className="hover:text-accent"
                 >
-                  FAQ
+                  {t("faq")}
                 </Link>
               </li>
             </ul>
@@ -124,7 +129,7 @@ export function RealEstateFooter() {
 
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-accent">
-              Services
+              {t("services")}
             </h3>
             <ul className="mt-5 space-y-3 text-sm text-inverse-on-surface/72">
               <li>
@@ -132,7 +137,7 @@ export function RealEstateFooter() {
                   href="/template-preview/luxury-agency/schedule-viewing"
                   className="hover:text-accent"
                 >
-                  Schedule Viewing
+                  {t("scheduleViewing")}
                 </Link>
               </li>
               <li>
@@ -140,27 +145,27 @@ export function RealEstateFooter() {
                   href="/template-preview/luxury-agency/valuation"
                   className="hover:text-accent"
                 >
-                  Home Valuation
+                  {t("homeValuation")}
                 </Link>
               </li>
-              <li>Buyer Advisory</li>
-              <li>Seller Representation</li>
-              <li>Developer Sales</li>
+              <li>{t("buyerAdvisory")}</li>
+              <li>{t("sellerRepresentation")}</li>
+              <li>{t("developerSales")}</li>
             </ul>
           </div>
 
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-accent">
-              Contact
+              {t("contact")}
             </h3>
             <ul className="mt-5 space-y-3 text-sm text-inverse-on-surface/72">
               <li className="flex gap-2">
                 <MapPin className="mt-0.5 size-4 text-accent" aria-hidden="true" />
-                {agency?.address || [agency?.city, agency?.district].filter(Boolean).join(", ") || "Kathmandu, Nepal"}
+                {localization.nepaliDigits ? address.replace(/\d/g, (digit) => "०१२३४५६७८९"[Number(digit)]) : address}
               </li>
               <li className="flex gap-2">
                 <Phone className="mt-0.5 size-4 text-accent" aria-hidden="true" />
-                {agency?.phone || "+977 9800000000"}
+                {localization.phone(agency?.phone || "+977 9800000000")}
               </li>
               <li className="flex gap-2">
                 <Mail className="mt-0.5 size-4 text-accent" aria-hidden="true" />
@@ -171,7 +176,7 @@ export function RealEstateFooter() {
         </div>
 
         <div className="mt-10 border-t border-white/10 pt-6 text-sm text-inverse-on-surface/55">
-          Copyright {new Date().getFullYear()} {name}. All rights reserved.
+          Copyright {localization.number(new Date().getFullYear())} {name}. {t("rightsReserved")}
         </div>
       </div>
     </footer>

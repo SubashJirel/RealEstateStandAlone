@@ -29,6 +29,9 @@ export interface PublicAgency {
   province: string;
   district: string;
   city: string;
+  municipality: string;
+  ward_number: string;
+  tole: string;
   business_hours: string;
   primary_color: string;
   seo_title: string;
@@ -44,6 +47,12 @@ export interface PublicAgency {
   linkedin_url: string | null;
   whatsapp_number: string | null;
   viber_number: string | null;
+  default_language: "en" | "ne";
+  default_date_system: "ad" | "bs";
+  use_nepali_digits: boolean;
+  timezone: "Asia/Kathmandu";
+  address_display: string;
+  phone_display: string;
 }
 
 export interface PublicSubmissionPayload {

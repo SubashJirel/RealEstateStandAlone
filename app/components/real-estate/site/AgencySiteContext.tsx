@@ -1,8 +1,9 @@
 "use client";
 
 import Link, { type LinkProps } from "next/link";
-import { createContext, useContext, type AnchorHTMLAttributes, type ReactNode } from "react";
+import { createContext, useContext, useEffect, type AnchorHTMLAttributes, type ReactNode } from "react";
 import type { PublicAgency } from "@/lib/public-agency-api";
+import { useLocalization } from "@/components/localization/LocalizationProvider";
 
 const TEMPLATE_BASE_PATH = "/template-preview/luxury-agency";
 
@@ -14,6 +15,12 @@ interface AgencySiteValue {
 const AgencySiteContext = createContext<AgencySiteValue | null>(null);
 
 export function AgencySiteProvider({ agency, children }: { agency: PublicAgency; children: ReactNode }) {
+  const { applyAgencyDefaults } = useLocalization();
+
+  useEffect(() => {
+    applyAgencyDefaults(agency);
+  }, [agency, applyAgencyDefaults]);
+
   return (
     <AgencySiteContext.Provider value={{ agency, basePath: `/agency/${agency.slug}` }}>
       {children}

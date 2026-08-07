@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Bath,
   BedDouble,
@@ -9,20 +11,14 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import type { PropertyDetail } from "@/lib/real-estate-template";
+import { useLocalization } from "@/components/localization/LocalizationProvider";
 
 interface PropertyOverviewProps {
   property: PropertyDetail;
 }
 
-function formatListedDate(isoDate: string): string {
-  return new Date(isoDate).toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
 export function PropertyOverview({ property }: PropertyOverviewProps) {
+  const localization = useLocalization();
   return (
     <section aria-labelledby="property-overview-heading">
       <div className="flex flex-wrap items-center gap-2">
@@ -73,13 +69,13 @@ export function PropertyOverview({ property }: PropertyOverviewProps) {
       <div className="mt-6 flex flex-wrap items-center gap-4 border-t border-light-border pt-6 text-sm text-on-surface-variant">
         <span className="flex items-center gap-2">
           <CalendarDays className="size-4 text-accent" aria-hidden="true" />
-          Listed {formatListedDate(property.listedAt)}
+          Listed {localization.date(property.listedAt)}
         </span>
         {property.yearBuilt && (
-          <span>Built in {property.yearBuilt}</span>
+          <span>Built in {localization.number(property.yearBuilt)}</span>
         )}
         {property.parkingSpaces !== undefined && property.parkingSpaces > 0 && (
-          <span>{property.parkingSpaces} parking spaces</span>
+          <span>{localization.number(property.parkingSpaces)} parking spaces</span>
         )}
       </div>
     </section>

@@ -43,6 +43,7 @@ import { cn } from "@/lib/utils";
 import { fetchSimilarProperties, inquireProperty, trackPropertyEvent, type LiveListingProperty } from "@/lib/public-properties-api";
 import { getCustomerSession, toggleSavedProperty } from "@/lib/public-customer-api";
 import { submitPublicSubmission } from "@/lib/public-agency-api";
+import { useLocalization } from "@/components/localization/LocalizationProvider";
 
 // ---------------------------------------------------------------------------
 // Main layout
@@ -288,19 +289,8 @@ function LiveImageGallery({
 // Overview
 // ---------------------------------------------------------------------------
 
-function formatListedDate(isoDate: string): string {
-  try {
-    return new Date(isoDate).toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    });
-  } catch {
-    return isoDate;
-  }
-}
-
 function LiveOverview({ property }: { property: LiveListingProperty }) {
+  const localization = useLocalization();
   return (
     <section aria-labelledby="property-overview-heading">
       <div className="flex flex-wrap items-center gap-2">
@@ -352,7 +342,7 @@ function LiveOverview({ property }: { property: LiveListingProperty }) {
         {property.listedAt && (
           <span className="flex items-center gap-2">
             <CalendarDays className="size-4 text-accent" aria-hidden="true" />
-            Listed {formatListedDate(property.listedAt)}
+            Listed {localization.date(property.listedAt)}
           </span>
         )}
         {property.yearBuilt && (
@@ -523,6 +513,7 @@ function LiveFloorPlansAndTours({ property }: { property: LiveListingProperty })
 
 function ListingTrustPanel({ property }: { property: LiveListingProperty }) {
   const site = useAgencySite();
+  const localization = useLocalization();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [message, setMessage] = useState("");
@@ -541,7 +532,7 @@ function ListingTrustPanel({ property }: { property: LiveListingProperty }) {
     } catch { setStatus("error"); }
   }
   return <section className="rounded-[var(--radius-panel)] border border-primary/20 bg-primary/5 p-5 shadow-low">
-    <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="flex items-center gap-2 font-semibold text-on-surface"><CalendarCheck className="size-5 text-primary" />Recently confirmed by the agency</p><p className="mt-1 text-sm text-on-surface-variant">{property.lastVerifiedAt ? `Last verified ${new Date(property.lastVerifiedAt).toLocaleDateString()}` : "Agency confirmation pending"}{property.ownerConfirmedAt ? ` · Owner confirmed ${new Date(property.ownerConfirmedAt).toLocaleDateString()}` : ""}</p></div><Button type="button" variant="outline" onClick={() => setOpen((value) => !value)}><Flag className="size-4" />Report listing</Button></div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="flex items-center gap-2 font-semibold text-on-surface"><CalendarCheck className="size-5 text-primary" />Recently confirmed by the agency</p><p className="mt-1 text-sm text-on-surface-variant">{property.lastVerifiedAt ? `Last verified ${localization.date(property.lastVerifiedAt)}` : "Agency confirmation pending"}{property.ownerConfirmedAt ? ` · Owner confirmed ${localization.date(property.ownerConfirmedAt)}` : ""}</p></div><Button type="button" variant="outline" onClick={() => setOpen((value) => !value)}><Flag className="size-4" />Report listing</Button></div>
     {open && status !== "success" && <form onSubmit={submit} className="mt-5 grid gap-3 border-t border-primary/15 pt-5 md:grid-cols-2"><label className="text-xs font-medium">Reason<select required value={reason} onChange={(event) => setReason(event.target.value)} className="mt-1 h-11 w-full rounded-xl border border-light-border bg-white px-3"><option value="">Choose a reason</option><option value="unavailable">No longer available</option><option value="already_sold">Already sold or rented</option><option value="duplicate">Duplicate listing</option><option value="incorrect_information">Incorrect information</option><option value="suspicious">Suspicious listing</option><option value="other">Other</option></select></label><label className="text-xs font-medium">Details<textarea required value={message} onChange={(event) => setMessage(event.target.value)} rows={3} className="mt-1 w-full rounded-xl border border-light-border bg-white p-3" /></label><label className="text-xs font-medium">Name (optional)<input value={reporter.name} onChange={(event) => setReporter({ ...reporter, name: event.target.value })} className="mt-1 h-11 w-full rounded-xl border border-light-border bg-white px-3" /></label><label className="text-xs font-medium">Email (optional)<input type="email" value={reporter.email} onChange={(event) => setReporter({ ...reporter, email: event.target.value })} className="mt-1 h-11 w-full rounded-xl border border-light-border bg-white px-3" /></label>{status === "error" && <p className="text-sm text-error md:col-span-2">Unable to submit this report.</p>}<Button type="submit" disabled={status === "submitting"} className="md:col-span-2">{status === "submitting" ? "Sending…" : "Send report"}</Button></form>}
     {status === "success" && <p className="mt-4 text-sm font-semibold text-primary">Thank you. The agency will review this report.</p>}
   </section>;
