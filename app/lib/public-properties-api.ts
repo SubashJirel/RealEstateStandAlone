@@ -76,6 +76,9 @@ export interface LiveListingProperty {
   shareSlug: string;
   floors: number;
   classification: string;
+  verificationLevel: string;
+  verificationLabel: string;
+  fullyVerified: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -192,6 +195,8 @@ export function mapProperty(property: any): LiveListingProperty {
     { label: "Price / Kattha", value: property.price_per_kattha ? formatPrice(property.price_per_kattha, property.currency) : "N/A" },
     { label: "Land price / sq.ft", value: property.price_per_land_sqft ? formatPrice(property.price_per_land_sqft, property.currency) : "N/A" },
     { label: "Utilities", value: [[property.has_water_supply,"Water"],[property.has_electricity,"Electricity"],[property.has_drainage,"Drainage"],[property.has_sewage,"Sewage"]].filter(([available]) => available === true).map(([, label]) => label).join(", ") || "Not confirmed" },
+    { label: "Verification", value: property.verification_summary?.label ?? "Not verified" },
+    { label: "Documents resolved", value: property.verification_summary ? `${property.verification_summary.approved_documents}/${property.verification_summary.total_documents}` : "0/10" },
   ];
 
   const amenities: string[] = Array.isArray(property.amenities)
@@ -254,6 +259,9 @@ export function mapProperty(property: any): LiveListingProperty {
     shareSlug: property.share_slug ?? "",
     floors: property.floors ?? 0,
     classification: titleCase(property.land_use_classification),
+    verificationLevel: property.verification_summary?.level ?? "unverified",
+    verificationLabel: property.verification_summary?.label ?? "Not verified",
+    fullyVerified: Boolean(property.verification_summary?.is_fully_verified),
   };
 }
 

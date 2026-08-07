@@ -305,6 +305,7 @@ function LiveOverview({ property }: { property: LiveListingProperty }) {
           {property.status}
         </Badge>
         <Badge variant="outline">{property.type}</Badge>
+        {property.verificationLevel !== "unverified" && <Badge variant="default">{property.verificationLabel}</Badge>}
         {property.featured && <Badge variant="default">Featured</Badge>}
         <span className="text-xs font-medium text-on-surface-variant">
           {property.displayPropertyId}
