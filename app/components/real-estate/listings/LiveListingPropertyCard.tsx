@@ -38,6 +38,7 @@ export function LiveListingPropertyCard({
               {property.status}
             </Badge>
             <Badge variant="outline">{property.type}</Badge>
+            {property.availabilityStatus !== "Available" && <Badge variant="secondary">{property.availabilityStatus}</Badge>}
             {property.fullyVerified && <Badge variant="default"><ShieldCheck className="mr-1 size-3" />Verified</Badge>}
           </div>
           <button

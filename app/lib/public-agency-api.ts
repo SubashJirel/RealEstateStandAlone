@@ -54,7 +54,8 @@ export interface PublicSubmissionPayload {
     | "newsletter"
     | "buyer_guide"
     | "career"
-    | "demo";
+    | "demo"
+    | "listing_report";
   full_name?: string;
   email?: string;
   phone?: string;

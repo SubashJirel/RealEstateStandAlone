@@ -79,6 +79,11 @@ export interface LiveListingProperty {
   verificationLevel: string;
   verificationLabel: string;
   fullyVerified: boolean;
+  availabilityStatus: string;
+  freshnessState: string;
+  lastVerifiedAt: string | null;
+  listingExpiresAt: string | null;
+  ownerConfirmedAt: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -262,6 +267,11 @@ export function mapProperty(property: any): LiveListingProperty {
     verificationLevel: property.verification_summary?.level ?? "unverified",
     verificationLabel: property.verification_summary?.label ?? "Not verified",
     fullyVerified: Boolean(property.verification_summary?.is_fully_verified),
+    availabilityStatus: property.availability_status_display ?? titleCase(property.status),
+    freshnessState: property.freshness_state ?? "unconfirmed",
+    lastVerifiedAt: property.availability_verified_at ?? null,
+    listingExpiresAt: property.listing_expires_at ?? null,
+    ownerConfirmedAt: property.owner_confirmed_at ?? null,
   };
 }
 
